@@ -516,7 +516,12 @@ async function renderAllInner(){
   try{
     index = await ensurePollsExist();
   }catch(e){
-    container.innerHTML = '<div class="empty-state">Impossible de charger les soirées pour le moment.</div>';
+    container.innerHTML = `<div class="empty-state">Erreur technique (diagnostic) :<br>${escapeHtml(String(e && e.message ? e.message : e))}</div>`;
+    return;
+  }
+
+  if(!Array.isArray(index)){
+    container.innerHTML = `<div class="empty-state">Diagnostic : ensurePollsExist n'a pas renvoyé de liste valide (${escapeHtml(String(index))}).</div>`;
     return;
   }
 
@@ -530,7 +535,7 @@ async function renderAllInner(){
     .sort(); // format AAAA-MM-JJ : le tri alphabétique = tri chronologique
 
   if(upcoming.length === 0){
-    container.innerHTML = '<div class="empty-state">Aucune soirée à venir pour le moment.</div>';
+    container.innerHTML = `<div class="empty-state">Aucune soirée à venir pour le moment.<br><small>(diag-1 : ${index.length} soirée(s) trouvée(s) au total en base)</small></div>`;
     return;
   }
 
@@ -542,7 +547,7 @@ async function renderAllInner(){
     container.appendChild(buildCard(dateKey, date, data));
   }
 
-  footer.textContent = `Les soirées sont générées automatiquement pour le mois en cours et le mois suivant.`;
+  footer.textContent = `Les soirées sont générées automatiquement pour le mois en cours et le mois suivant. (build diag-1)`;
 }
 
 function buildCard(dateKey, date, data){
