@@ -312,19 +312,33 @@ let myName = "";
 let nameSaveTimer = null;
 
 // ---------- storage helpers ----------
-async function getPersonal(key){
-  try{ const r = await window.storage.get(key, false); return r ? r.value : null; }
+// ⚠️ Remplace cette URL par celle de TA base Firebase Realtime Database
+// (tu l'obtiens dans la console Firebase, voir instructions fournies séparément)
+const FIREBASE_DB_URL = "https://REMPLACE-PAR-TON-PROJET-default-rtdb.firebaseio.com";
+
+function getPersonal(key){
+  try{ return localStorage.getItem(key); }
   catch(e){ return null; }
 }
-async function setPersonal(key, value){
-  try{ await window.storage.set(key, value, false); }catch(e){ console.error(e); }
+function setPersonal(key, value){
+  try{ localStorage.setItem(key, value); }catch(e){ console.error(e); }
 }
 async function getShared(key){
-  try{ const r = await window.storage.get(key, true); return r ? r.value : null; }
-  catch(e){ return null; }
+  try{
+    const res = await fetch(`${FIREBASE_DB_URL}/${encodeURIComponent(key)}.json`);
+    if(!res.ok) return null;
+    const data = await res.json();
+    return data === null ? null : data;
+  }catch(e){ console.error(e); return null; }
 }
 async function setShared(key, value){
-  try{ await window.storage.set(key, value, true); }catch(e){ console.error(e); }
+  try{
+    await fetch(`${FIREBASE_DB_URL}/${encodeURIComponent(key)}.json`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(value)
+    });
+  }catch(e){ console.error(e); }
 }
 
 // ---------- date generation ----------
