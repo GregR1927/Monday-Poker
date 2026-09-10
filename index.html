@@ -374,8 +374,19 @@ async function listPollDates(){
 async function getPollData(dateKey){
   try{
     const snap = await firebase.database().ref(`data/${dateKey}`).once('value');
-    return snap.val() || {present:[], waitlist:[], absent:[]};
-  }catch(e){ console.error(e); return {present:[], waitlist:[], absent:[]}; }
+    const val = snap.val() || {};
+    // Firebase ne stocke pas les tableaux vides (le champ disparaît tout
+    // simplement), donc on les recrée systématiquement à la lecture pour
+    // éviter tout plantage sur present/waitlist/absent manquants.
+    return {
+      present: val.present || [],
+      waitlist: val.waitlist || [],
+      absent: val.absent || []
+    };
+  }catch(e){
+    console.error(e);
+    return {present:[], waitlist:[], absent:[]};
+  }
 }
 
 // Modification atomique : Firebase relit la donnée la plus récente et
