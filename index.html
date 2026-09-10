@@ -287,6 +287,8 @@
     line-height:1.6;
   }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -315,6 +317,7 @@ let nameSaveTimer = null;
 // ⚠️ Remplace cette URL par celle de TA base Firebase Realtime Database
 // (tu l'obtiens dans la console Firebase, voir instructions fournies séparément)
 const FIREBASE_DB_URL = "https://monday-poker-default-rtdb.firebaseio.com";
+firebase.initializeApp({ databaseURL: FIREBASE_DB_URL });
 
 function getPersonal(key){
   try{ return localStorage.getItem(key); }
@@ -612,29 +615,35 @@ document.getElementById('nameInput').addEventListener('input', (e) => {
   await renderAll();
 })();
 
-// Actualise automatiquement les sondages toutes les 30 minutes,
-// mais uniquement quand l'app est affichée à l'écran (économie de batterie).
-let pollTimer = null;
+// Écoute Firebase en temps réel : dès qu'une inscription change
+// (la tienne ou celle de quelqu'un d'autre), l'app se met à jour
+// instantanément, sans délai et sans vérification périodique.
+let liveRef = null;
+let firstSnapshot = true;
 
-function startPolling(){
-  if(pollTimer) return;
-  pollTimer = setInterval(renderAll, 30 * 60 * 1000);
+function startListening(){
+  if(liveRef) return;
+  liveRef = firebase.database().ref();
+  liveRef.on('value', () => {
+    if(firstSnapshot){ firstSnapshot = false; return; } // évite un doublon avec le rendu initial
+    renderAll();
+  });
 }
-function stopPolling(){
-  clearInterval(pollTimer);
-  pollTimer = null;
+function stopListening(){
+  if(liveRef){ liveRef.off(); liveRef = null; }
 }
 
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible'){
     renderAll();
-    startPolling();
+    firstSnapshot = true;
+    startListening();
   } else {
-    stopPolling();
+    stopListening();
   }
 });
 
-startPolling();
+startListening();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
