@@ -326,22 +326,95 @@ function getPersonal(key){
 function setPersonal(key, value){
   try{ localStorage.setItem(key, value); }catch(e){ console.error(e); }
 }
-async function getShared(key){
-  try{
-    const res = await fetch(`${FIREBASE_DB_URL}/${encodeURIComponent(key)}.json`);
-    if(!res.ok) return null;
-    const data = await res.json();
-    return data === null ? null : data;
-  }catch(e){ console.error(e); return null; }
+function getPersonal(key){
+  try{ return localStorage.getItem(key); }
+  catch(e){ return null; }
 }
-async function setShared(key, value){
+function setPersonal(key, value){
+  try{ localStorage.setItem(key, value); }catch(e){ console.error(e); }
+}
+
+// Écriture simple (sans risque de conflit : chaque soirée a son propre nœud,
+// donc créer une soirée n'écrase jamais celle d'une autre).
+async function markPollExists(dateKey){
   try{
-    await fetch(`${FIREBASE_DB_URL}/${encodeURIComponent(key)}.json`, {
-      method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(value)
-    });
+    await firebase.database().ref(`polls/${dateKey}`).set(true);
   }catch(e){ console.error(e); }
+}
+
+async function listPollDates(){
+  try{
+    const snap = await firebase.database().ref('polls').once('value');
+    const val = snap.val();
+    return val ? Object.keys(val) : [];
+  }catch(e){ console.error(e); return []; }
+}
+
+async function getPollData(dateKey){
+  try{
+    const snap = await firebase.database().ref(`data/${dateKey}`).once('value');
+    return snap.val() || {present:[], waitlist:[], absent:[]};
+  }catch(e){ console.error(e); return {present:[], waitlist:[], absent:[]}; }
+}
+
+// Modification atomique : Firebase relit la donnée la plus récente et
+// réessaie automatiquement en cas d'écriture concurrente, donc deux
+// personnes qui s'inscrivent en même temps ne peuvent plus s'écraser
+// l'une l'autre ni créer de doublons.
+async function updatePollData(dateKey, updater){
+  const ref = firebase.database().ref(`data/${dateKey}`);
+  const result = await ref.transaction((current) => {
+    const data = current || {present:[], waitlist:[], absent:[]};
+    if(!data.present) data.present = [];
+    if(!data.waitlist) data.waitlist = [];
+    if(!data.absent) data.absent = [];
+    return updater(data);
+  });
+  return result.snapshot.val();
+}
+
+// ---------- migration (une seule fois) ----------
+// Convertit automatiquement les données enregistrées avec l'ancien système
+// de stockage vers le nouveau format, sans rien perdre. Un verrou garantit
+// qu'un seul appareil fait la conversion même si plusieurs personnes
+// ouvrent l'app en même temps juste après la mise à jour.
+async function migrateOldDataIfNeeded(){
+  try{
+    const lockRef = firebase.database().ref('migration-v2-done');
+    const lockResult = await lockRef.transaction(current => {
+      if(current) return undefined; // déjà migré (ou en cours) ailleurs : on abandonne
+      return true;
+    });
+    if(!lockResult.committed) return;
+
+    const oldIndexSnap = await firebase.database().ref('polls-index').once('value');
+    const oldIndexRaw = oldIndexSnap.val();
+    if(!oldIndexRaw) return; // rien à migrer
+
+    let oldKeys = [];
+    try{ oldKeys = JSON.parse(oldIndexRaw); }catch(e){ oldKeys = []; }
+
+    for(const k of oldKeys){
+      const dateKey = k.replace('poll:','');
+      const oldDataSnap = await firebase.database().ref(`data:${dateKey}`).once('value');
+      const raw = oldDataSnap.val();
+      let data = {present:[], waitlist:[], absent:[]};
+      if(raw){
+        try{ data = JSON.parse(raw); }catch(e){}
+      }
+      await firebase.database().ref(`polls/${dateKey}`).set(true);
+      await firebase.database().ref(`data/${dateKey}`).set(data);
+    }
+
+    // Nettoyage des anciennes clés une fois la copie terminée
+    await firebase.database().ref('polls-index').remove();
+    for(const k of oldKeys){
+      const dateKey = k.replace('poll:','');
+      await firebase.database().ref(`data:${dateKey}`).remove();
+    }
+  }catch(e){
+    console.error('Migration échouée (non bloquant) :', e);
+  }
 }
 
 // ---------- date generation ----------
@@ -363,7 +436,7 @@ function pollKey(date){
   const y = date.getFullYear();
   const m = String(date.getMonth()+1).padStart(2,'0');
   const dd = String(date.getDate()).padStart(2,'0');
-  return `poll:${y}-${m}-${dd}`;
+  return `${y}-${m}-${dd}`;
 }
 
 function formatTitle(date){
@@ -380,6 +453,8 @@ function formatTs(ts){
 
 // Simule la génération automatique fin de mois : on s'assure que le mois
 // courant et le mois suivant ont toujours leurs soirées prêtes.
+// Chaque soirée vit dans son propre nœud Firebase, donc la créer n'écrase
+// jamais celles déjà créées par quelqu'un d'autre (fini les doublons).
 async function ensurePollsExist(){
   const today = new Date();
   const months = [
@@ -387,34 +462,18 @@ async function ensurePollsExist(){
     {y: today.getMonth() === 11 ? today.getFullYear()+1 : today.getFullYear(), m: (today.getMonth()+1) % 12}
   ];
 
-  let index = await getShared('polls-index');
-  index = index ? JSON.parse(index) : [];
-  const known = new Set(index);
+  const existing = new Set(await listPollDates());
 
-  let changed = false;
   for(const {y,m} of months){
     for(const date of mondaysOfMonth(y,m)){
       const key = pollKey(date);
-      if(!known.has(key)){
-        known.add(key);
-        changed = true;
-        await setShared(key.replace('poll:','data:'), JSON.stringify({present:[], waitlist:[], absent:[]}));
+      if(!existing.has(key)){
+        await markPollExists(key);
+        existing.add(key);
       }
     }
   }
-  if(changed){
-    index = Array.from(known).sort();
-    await setShared('polls-index', JSON.stringify(index));
-  }
-  return index;
-}
-
-async function getPollData(dateKey){
-  const raw = await getShared(`data:${dateKey}`);
-  return raw ? JSON.parse(raw) : {present:[], waitlist:[], absent:[]};
-}
-async function savePollData(dateKey, data){
-  await setShared(`data:${dateKey}`, JSON.stringify(data));
+  return Array.from(existing);
 }
 
 function removeFromAll(data, name){
@@ -439,13 +498,12 @@ async function renderAll(){
 
   const now = new Date();
   const upcoming = index
-    .map(k => k.replace('poll:',''))
     .filter(k => {
       const [y,m,d] = k.split('-').map(Number);
       const dt = new Date(y, m-1, d, 22, 0, 0); // reste affiché jusqu'à 22h le soir même
       return dt >= now;
     })
-    .sort();
+    .sort(); // format AAAA-MM-JJ : le tri alphabétique = tri chronologique
 
   if(upcoming.length === 0){
     container.innerHTML = '<div class="empty-state">Aucune soirée à venir pour le moment.</div>';
@@ -552,38 +610,46 @@ async function handleVote(dateKey, action, cardEl){
   const notice = cardEl.querySelector('[data-notice]');
   notice.classList.remove('show');
 
-  const data = await getPollData(dateKey);
-  removeFromAll(data, myName);
-  const entry = { name: myName, ts: Date.now() };
+  let wentToWaitlist = false;
+  const nameAtClick = myName;
 
-  if(action === 'present'){
-    if(data.present.length < MAX_PRESENT){
-      data.present.push(entry);
-    } else {
+  await updatePollData(dateKey, (data) => {
+    removeFromAll(data, nameAtClick);
+    const entry = { name: nameAtClick, ts: Date.now() };
+
+    if(action === 'present'){
+      if(data.present.length < MAX_PRESENT){
+        data.present.push(entry);
+      } else {
+        data.waitlist.push(entry);
+        wentToWaitlist = true;
+      }
+    } else if(action === 'waitlist'){
       data.waitlist.push(entry);
-      notice.textContent = "Complet : tu as été placé(e) en liste d'attente.";
-      notice.classList.add('show');
+    } else if(action === 'absent'){
+      data.absent.push(entry);
     }
-  } else if(action === 'waitlist'){
-    data.waitlist.push(entry);
-  } else if(action === 'absent'){
-    data.absent.push(entry);
+    return data;
+  });
+
+  if(wentToWaitlist){
+    notice.textContent = "Complet : tu as été placé(e) en liste d'attente.";
+    notice.classList.add('show');
   }
 
-  await savePollData(dateKey, data);
   await renderAll();
 }
 
 async function handleUnregister(dateKey, name, cardEl){
-  const data = await getPollData(dateKey);
-  removeFromAll(data, name);
+  await updatePollData(dateKey, (data) => {
+    removeFromAll(data, name);
+    // Promeut le premier de la liste d'attente si une place se libère
+    if(data.present.length < MAX_PRESENT && data.waitlist.length > 0){
+      data.present.push(data.waitlist.shift());
+    }
+    return data;
+  });
 
-  // Promeut le premier de la liste d'attente si une place se libère
-  if(data.present.length < MAX_PRESENT && data.waitlist.length > 0){
-    data.present.push(data.waitlist.shift());
-  }
-
-  await savePollData(dateKey, data);
   await renderAll();
 }
 
@@ -612,6 +678,7 @@ document.getElementById('nameInput').addEventListener('input', (e) => {
 // ---------- init ----------
 (async function init(){
   await initName();
+  await migrateOldDataIfNeeded();
   await renderAll();
 })();
 
