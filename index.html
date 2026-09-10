@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>♠️♦️ Monday Poker ♣️♥️</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="theme-color" content="#0f3d2e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Monday Poker">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt-dark:#0f3d2e;
+    --felt:#164f3b;
+    --felt-light:#1d6249;
+    --cream:#f3ecd9;
+    --cream-dim:#e6dcc0;
+    --ink:#1c1a14;
+    --red:#a6293b;
+    --red-deep:#7e1e2c;
+    --gold:#c9982b;
+    --gold-light:#e0b94f;
+    --line: rgba(28,26,20,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 20% -10%, var(--felt-light), transparent 55%),
+      var(--felt-dark);
+    color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 18px;}
+
+  header.top{
+    padding:36px 18px 22px;
+    text-align:center;
+  }
+  header.top .suits{
+    font-size:22px;
+    letter-spacing:10px;
+    opacity:0.85;
+    margin-bottom:6px;
+  }
+  header.top h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(28px,7vw,40px);
+    color:var(--cream);
+    margin:0 0 8px;
+    line-height:1.05;
+  }
+  header.top p{
+    color:var(--cream-dim);
+    font-size:14.5px;
+    max-width:420px;
+    margin:0 auto;
+    line-height:1.5;
+  }
+
+  .name-bar{
+    background:var(--felt);
+    border:1px solid rgba(230,220,192,0.18);
+    border-radius:14px;
+    padding:14px 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:26px;
+  }
+  .name-bar label{
+    color:var(--cream-dim);
+    font-size:13px;
+    white-space:nowrap;
+  }
+  .name-bar input{
+    flex:1;
+    background:rgba(243,236,217,0.08);
+    border:1px solid rgba(230,220,192,0.25);
+    border-radius:8px;
+    padding:9px 11px;
+    color:var(--cream);
+    font-size:15px;
+    font-family:inherit;
+    outline:none;
+  }
+  .name-bar input::placeholder{color:rgba(230,220,192,0.45);}
+  .name-bar input:focus{border-color:var(--gold-light);}
+  .name-bar .status{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--gold-light);
+    flex-shrink:0;
+    opacity:0;
+    transition:opacity .3s;
+  }
+  .name-bar .status.show{opacity:1;}
+
+  .night-card{
+    background:var(--cream);
+    border-radius:16px;
+    padding:22px 20px 20px;
+    margin-bottom:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.28);
+    position:relative;
+    overflow:hidden;
+  }
+  .night-card::before{
+    content:"";
+    position:absolute;
+    top:0;left:0;right:0;height:5px;
+    background:linear-gradient(90deg, var(--red), var(--gold), var(--red));
+  }
+  .night-card .suits-row{
+    font-size:15px;
+    letter-spacing:6px;
+    color:var(--red);
+    margin-bottom:6px;
+  }
+  .night-card h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:22px;
+    margin:0 0 3px;
+    text-transform:capitalize;
+  }
+  .night-card .subline{
+    font-size:13px;
+    color:#6b6858;
+    margin-bottom:16px;
+  }
+
+  .capacity{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .capacity .bar{
+    flex:1;
+    height:7px;
+    background:var(--cream-dim);
+    border-radius:5px;
+    overflow:hidden;
+  }
+  .capacity .bar-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--felt), var(--felt-light));
+    transition:width .3s;
+  }
+  .capacity .count{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--felt);
+    white-space:nowrap;
+  }
+
+  .vote-row{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .vote-btn{
+    border:none;
+    border-radius:9px;
+    padding:10px 6px;
+    font-size:13px;
+    font-weight:600;
+    font-family:inherit;
+    cursor:pointer;
+    transition:transform .12s, filter .12s;
+  }
+  .vote-btn:active{transform:scale(0.96);}
+  .vote-btn.present{background:var(--felt);color:var(--cream);}
+  .vote-btn.wait{background:var(--gold);color:var(--ink);}
+  .vote-btn.absent{background:transparent;color:var(--red-deep);border:1.5px solid var(--red-deep);}
+  .vote-btn.active-vote{outline:2.5px solid var(--red);outline-offset:2px;}
+  .vote-btn:disabled{opacity:0.4;cursor:default;}
+
+  .notice{
+    font-size:12.5px;
+    color:var(--gold);
+    background:rgba(201,152,43,0.12);
+    border:1px solid rgba(201,152,43,0.3);
+    border-radius:8px;
+    padding:7px 10px;
+    margin:-8px 0 14px;
+    display:none;
+  }
+  .notice.show{display:block;}
+
+  .list-section{margin-top:14px;}
+  .list-section h3{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:#8a8672;
+    margin:0 0 8px;
+    font-weight:600;
+  }
+  .person-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+    gap:10px;
+  }
+  .person-row:last-child{border-bottom:none;}
+  .person-row .who{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    min-width:0;
+  }
+  .person-row .idx{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    color:var(--red);
+    font-size:14px;
+    width:18px;
+    flex-shrink:0;
+  }
+  .person-row .name{
+    font-weight:600;
+    font-size:14.5px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .person-row .ts{
+    font-size:11.5px;
+    color:#918d7a;
+    white-space:nowrap;
+  }
+  .person-row .unreg{
+    background:none;
+    border:none;
+    color:var(--red-deep);
+    font-size:12px;
+    cursor:pointer;
+    text-decoration:underline;
+    flex-shrink:0;
+    padding:4px 0 4px 6px;
+    font-family:inherit;
+  }
+  .empty-line{
+    font-size:13px;
+    color:#a39e88;
+    font-style:italic;
+    padding:4px 0;
+  }
+
+  .full-badge{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    color:var(--red-deep);
+    background:rgba(166,41,59,0.1);
+    padding:2px 8px;
+    border-radius:20px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+
+  .empty-state{
+    text-align:center;
+    color:var(--cream-dim);
+    padding:50px 20px;
+    font-size:14px;
+  }
+  .footer-note{
+    text-align:center;
+    color:rgba(230,220,192,0.5);
+    font-size:12px;
+    margin-top:30px;
+    padding:0 20px;
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>♠️♦️ Monday Poker ♣️♥️</h1>
+    <p>Inscris-toi pour les prochaines soirées. 10 places en présentiel, le reste passe en liste d'attente.</p>
+  </header>
+
+  <div class="name-bar">
+    <label for="nameInput">Ton prénom</label>
+    <input id="nameInput" type="text" placeholder="ex. Julien" maxlength="30">
+    <div class="status" id="nameStatus"></div>
+  </div>
+
+  <div id="nights"></div>
+  <div class="footer-note" id="footerNote"></div>
+</div>
+
+<script>
+const MAX_PRESENT = 10;
+const SUITS = "♥️ ♣️ ♦️ ♠️";
+let myName = "";
+let nameSaveTimer = null;
+
+// ---------- storage helpers ----------
+async function getPersonal(key){
+  try{ const r = await window.storage.get(key, false); return r ? r.value : null; }
+  catch(e){ return null; }
+}
+async function setPersonal(key, value){
+  try{ await window.storage.set(key, value, false); }catch(e){ console.error(e); }
+}
+async function getShared(key){
+  try{ const r = await window.storage.get(key, true); return r ? r.value : null; }
+  catch(e){ return null; }
+}
+async function setShared(key, value){
+  try{ await window.storage.set(key, value, true); }catch(e){ console.error(e); }
+}
+
+// ---------- date generation ----------
+// Renvoie tous les lundis 20h00 d'un mois donné (0-indexed month)
+function mondaysOfMonth(year, month){
+  const result = [];
+  const d = new Date(year, month, 1);
+  while(d.getMonth() === month){
+    if(d.getDay() === 1){
+      const night = new Date(year, month, d.getDate(), 20, 0, 0);
+      result.push(night);
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return result;
+}
+
+function pollKey(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const dd = String(date.getDate()).padStart(2,'0');
+  return `poll:${y}-${m}-${dd}`;
+}
+
+function formatTitle(date){
+  const dateStr = date.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+  return `${dateStr.charAt(0).toUpperCase()}${dateStr.slice(1)} 20:00`;
+}
+
+function formatTs(ts){
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'});
+  const time = d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  return `Inscrit le ${date} à ${time}`;
+}
+
+// Simule la génération automatique fin de mois : on s'assure que le mois
+// courant et le mois suivant ont toujours leurs soirées prêtes.
+async function ensurePollsExist(){
+  const today = new Date();
+  const months = [
+    {y: today.getFullYear(), m: today.getMonth()},
+    {y: today.getMonth() === 11 ? today.getFullYear()+1 : today.getFullYear(), m: (today.getMonth()+1) % 12}
+  ];
+
+  let index = await getShared('polls-index');
+  index = index ? JSON.parse(index) : [];
+  const known = new Set(index);
+
+  let changed = false;
+  for(const {y,m} of months){
+    for(const date of mondaysOfMonth(y,m)){
+      const key = pollKey(date);
+      if(!known.has(key)){
+        known.add(key);
+        changed = true;
+        await setShared(key.replace('poll:','data:'), JSON.stringify({present:[], waitlist:[], absent:[]}));
+      }
+    }
+  }
+  if(changed){
+    index = Array.from(known).sort();
+    await setShared('polls-index', JSON.stringify(index));
+  }
+  return index;
+}
+
+async function getPollData(dateKey){
+  const raw = await getShared(`data:${dateKey}`);
+  return raw ? JSON.parse(raw) : {present:[], waitlist:[], absent:[]};
+}
+async function savePollData(dateKey, data){
+  await setShared(`data:${dateKey}`, JSON.stringify(data));
+}
+
+function removeFromAll(data, name){
+  data.present = data.present.filter(p => p.name.toLowerCase() !== name.toLowerCase());
+  data.waitlist = data.waitlist.filter(p => p.name.toLowerCase() !== name.toLowerCase());
+  data.absent = data.absent.filter(p => p.name.toLowerCase() !== name.toLowerCase());
+}
+
+// ---------- rendering ----------
+async function renderAll(){
+  const container = document.getElementById('nights');
+  const footer = document.getElementById('footerNote');
+  container.innerHTML = '<div class="empty-state">Chargement des soirées…</div>';
+
+  let index;
+  try{
+    index = await ensurePollsExist();
+  }catch(e){
+    container.innerHTML = '<div class="empty-state">Impossible de charger les soirées pour le moment.</div>';
+    return;
+  }
+
+  const now = new Date();
+  const upcoming = index
+    .map(k => k.replace('poll:',''))
+    .filter(k => {
+      const [y,m,d] = k.split('-').map(Number);
+      const dt = new Date(y, m-1, d, 22, 0, 0); // reste affiché jusqu'à 22h le soir même
+      return dt >= now;
+    })
+    .sort();
+
+  if(upcoming.length === 0){
+    container.innerHTML = '<div class="empty-state">Aucune soirée à venir pour le moment.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  for(const dateKey of upcoming){
+    const [y,m,d] = dateKey.split('-').map(Number);
+    const date = new Date(y, m-1, d, 20, 0, 0);
+    const data = await getPollData(dateKey);
+    container.appendChild(buildCard(dateKey, date, data));
+  }
+
+  footer.textContent = `Les soirées sont générées automatiquement pour le mois en cours et le mois suivant.`;
+}
+
+function buildCard(dateKey, date, data){
+  const card = document.createElement('div');
+  card.className = 'night-card';
+
+  const isFull = data.present.length >= MAX_PRESENT;
+  const myVote = getMyVote(data);
+
+  card.innerHTML = `
+    <div class="suits-row">${SUITS}</div>
+    <h2>${formatTitle(date)}</h2>
+    <div class="subline">Soirée poker hebdomadaire</div>
+
+    <div class="capacity">
+      <div class="bar"><div class="bar-fill" style="width:${Math.min(100,(data.present.length/MAX_PRESENT)*100)}%"></div></div>
+      <div class="count">${data.present.length}/${MAX_PRESENT} présents${isFull ? '<span class="full-badge">Complet</span>' : ''}</div>
+    </div>
+
+    <div class="vote-row">
+      <button class="vote-btn present ${myVote==='present'?'active-vote':''}" data-action="present">Présent</button>
+      <button class="vote-btn wait ${myVote==='waitlist'?'active-vote':''}" data-action="waitlist">Liste d'attente</button>
+      <button class="vote-btn absent ${myVote==='absent'?'active-vote':''}" data-action="absent">Absent</button>
+    </div>
+
+    <div class="notice" data-notice></div>
+
+    ${listSection('Présents', data.present, true)}
+    ${listSection("Liste d'attente", data.waitlist, false)}
+    ${listSection('Absents', data.absent, false)}
+  `;
+
+  card.querySelectorAll('.vote-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleVote(dateKey, btn.dataset.action, card));
+  });
+
+  card.querySelectorAll('[data-unreg]').forEach(btn => {
+    btn.addEventListener('click', () => handleUnregister(dateKey, btn.dataset.unreg, card));
+  });
+
+  return card;
+}
+
+function getMyVote(data){
+  if(!myName) return null;
+  const n = myName.toLowerCase();
+  if(data.present.some(p=>p.name.toLowerCase()===n)) return 'present';
+  if(data.waitlist.some(p=>p.name.toLowerCase()===n)) return 'waitlist';
+  if(data.absent.some(p=>p.name.toLowerCase()===n)) return 'absent';
+  return null;
+}
+
+function listSection(title, people, numbered){
+  if(people.length === 0){
+    return `<div class="list-section"><h3>${title} (0)</h3><div class="empty-line">Personne pour l'instant</div></div>`;
+  }
+  const rows = people.map((p, i) => {
+    const canUnreg = myName && p.name.toLowerCase() === myName.toLowerCase();
+    return `
+      <div class="person-row">
+        <div class="who">
+          ${numbered ? `<span class="idx">${i+1}</span>` : ''}
+          <span class="name">${escapeHtml(p.name)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="ts">${formatTs(p.ts)}</span>
+          ${canUnreg ? `<button class="unreg" data-unreg="${escapeHtml(p.name)}">Se désinscrire</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="list-section"><h3>${title} (${people.length})</h3>${rows}</div>`;
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ---------- actions ----------
+async function handleVote(dateKey, action, cardEl){
+  if(!myName){
+    document.getElementById('nameInput').focus();
+    document.getElementById('nameInput').style.borderColor = 'var(--red)';
+    setTimeout(()=>{ document.getElementById('nameInput').style.borderColor = ''; }, 1200);
+    return;
+  }
+
+  const notice = cardEl.querySelector('[data-notice]');
+  notice.classList.remove('show');
+
+  const data = await getPollData(dateKey);
+  removeFromAll(data, myName);
+  const entry = { name: myName, ts: Date.now() };
+
+  if(action === 'present'){
+    if(data.present.length < MAX_PRESENT){
+      data.present.push(entry);
+    } else {
+      data.waitlist.push(entry);
+      notice.textContent = "Complet : tu as été placé(e) en liste d'attente.";
+      notice.classList.add('show');
+    }
+  } else if(action === 'waitlist'){
+    data.waitlist.push(entry);
+  } else if(action === 'absent'){
+    data.absent.push(entry);
+  }
+
+  await savePollData(dateKey, data);
+  await renderAll();
+}
+
+async function handleUnregister(dateKey, name, cardEl){
+  const data = await getPollData(dateKey);
+  removeFromAll(data, name);
+
+  // Promeut le premier de la liste d'attente si une place se libère
+  if(data.present.length < MAX_PRESENT && data.waitlist.length > 0){
+    data.present.push(data.waitlist.shift());
+  }
+
+  await savePollData(dateKey, data);
+  await renderAll();
+}
+
+// ---------- name handling ----------
+async function initName(){
+  const saved = await getPersonal('my-name');
+  if(saved){
+    myName = saved;
+    document.getElementById('nameInput').value = saved;
+  }
+}
+
+document.getElementById('nameInput').addEventListener('input', (e) => {
+  myName = e.target.value.trim();
+  const status = document.getElementById('nameStatus');
+  status.classList.remove('show');
+  clearTimeout(nameSaveTimer);
+  nameSaveTimer = setTimeout(async () => {
+    await setPersonal('my-name', myName);
+    status.classList.add('show');
+    setTimeout(()=>status.classList.remove('show'), 1500);
+    await renderAll();
+  }, 500);
+});
+
+// ---------- init ----------
+(async function init(){
+  await initName();
+  await renderAll();
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
