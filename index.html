@@ -483,7 +483,31 @@ function removeFromAll(data, name){
 }
 
 // ---------- rendering ----------
+// Verrou : empêche deux rafraîchissements de tourner en même temps
+// (c'est ce qui causait les doublons de cartes lors d'un vote, car le
+// vote lui-même ET la notification temps réel déclenchaient chacun un
+// rendu en parallèle).
+let renderInProgress = false;
+let renderAgainRequested = false;
+
 async function renderAll(){
+  if(renderInProgress){
+    renderAgainRequested = true;
+    return;
+  }
+  renderInProgress = true;
+  try{
+    await renderAllInner();
+  } finally {
+    renderInProgress = false;
+    if(renderAgainRequested){
+      renderAgainRequested = false;
+      renderAll();
+    }
+  }
+}
+
+async function renderAllInner(){
   const container = document.getElementById('nights');
   const footer = document.getElementById('footerNote');
   container.innerHTML = '<div class="empty-state">Chargement des soirées…</div>';
