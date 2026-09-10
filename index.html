@@ -612,13 +612,13 @@ document.getElementById('nameInput').addEventListener('input', (e) => {
   await renderAll();
 })();
 
-// Actualise automatiquement les sondages toutes les 8 secondes,
+// Actualise automatiquement les sondages toutes les 30 minutes,
 // mais uniquement quand l'app est affichée à l'écran (économie de batterie).
 let pollTimer = null;
 
 function startPolling(){
   if(pollTimer) return;
-  pollTimer = setInterval(renderAll, 8000);
+  pollTimer = setInterval(renderAll, 30 * 60 * 1000);
 }
 function stopPolling(){
   clearInterval(pollTimer);
