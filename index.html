@@ -612,6 +612,30 @@ document.getElementById('nameInput').addEventListener('input', (e) => {
   await renderAll();
 })();
 
+// Actualise automatiquement les sondages toutes les 8 secondes,
+// mais uniquement quand l'app est affichée à l'écran (économie de batterie).
+let pollTimer = null;
+
+function startPolling(){
+  if(pollTimer) return;
+  pollTimer = setInterval(renderAll, 8000);
+}
+function stopPolling(){
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible'){
+    renderAll();
+    startPolling();
+  } else {
+    stopPolling();
+  }
+});
+
+startPolling();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});

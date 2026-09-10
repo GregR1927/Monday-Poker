@@ -1,4 +1,4 @@
-const CACHE_NAME = "monday-poker-v1";
+const CACHE_NAME = "monday-poker-v2";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
@@ -22,8 +22,16 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Réseau en priorité (pour toujours avoir la dernière version du code),
+// et on retombe sur le cache uniquement si hors-ligne.
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
