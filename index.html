@@ -317,6 +317,13 @@ window.addEventListener('error', (e) => {
     el.innerHTML = `<div class="empty-state">Erreur au chargement de l'app :<br><b>${(e && e.message) ? e.message : 'erreur inconnue'}</b><br><small>${e.filename ? e.filename.split('/').pop() : ''}${e.lineno ? ':'+e.lineno : ''}</small></div>`;
   }
 });
+window.addEventListener('unhandledrejection', (e) => {
+  const el = document.getElementById('nights');
+  if(el){
+    const reason = e && e.reason ? (e.reason.message || String(e.reason)) : 'erreur inconnue';
+    el.innerHTML = `<div class="empty-state">Erreur silencieuse au chargement :<br><b>${reason}</b></div>`;
+  }
+});
 
 const MAX_PRESENT = 10;
 const SUITS = "♥️ ♣️ ♦️ ♠️";
@@ -512,6 +519,10 @@ async function renderAll(){
   renderInProgress = true;
   try{
     await renderAllInner();
+  } catch(e){
+    const el = document.getElementById('nights');
+    if(el) el.innerHTML = `<div class="empty-state">Erreur pendant le rafraîchissement :<br><b>${(e && e.message) ? e.message : String(e)}</b></div>`;
+    console.error('Erreur renderAll :', e);
   } finally {
     renderInProgress = false;
     if(renderAgainRequested){
@@ -720,9 +731,15 @@ document.getElementById('nameInput').addEventListener('input', (e) => {
 
 // ---------- init ----------
 (async function init(){
-  await initName();
-  await migrateOldDataIfNeeded();
-  await renderAll();
+  try{
+    await initName();
+    await migrateOldDataIfNeeded();
+    await renderAll();
+  }catch(e){
+    const el = document.getElementById('nights');
+    if(el) el.innerHTML = `<div class="empty-state">Erreur au démarrage :<br><b>${(e && e.message) ? e.message : String(e)}</b></div>`;
+    console.error('Erreur au démarrage :', e);
+  }
 })();
 
 // Écoute Firebase en temps réel : dès qu'une inscription change
