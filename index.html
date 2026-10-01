@@ -208,9 +208,16 @@
     justify-content:center;
     font-size:12px;
     font-weight:700;
-    color:#fff;
     flex-shrink:0;
     font-family:'Fraunces', serif;
+  }
+  .avatar-number{
+    background:#fff;
+    color:var(--ink);
+    border:1.5px solid rgba(28,26,20,0.15);
+  }
+  .name-absent{
+    color:var(--text-muted, #8a8672);
   }
 
   .notice{
@@ -621,12 +628,14 @@ async function ensurePollsExist(){
     {y: today.getMonth() === 11 ? today.getFullYear()+1 : today.getFullYear(), m: (today.getMonth()+1) % 12}
   ];
   const existing = new Set(await listPollDates());
+  const missing = [];
   for(const {y,m} of months){
     for(const date of mondaysOfMonth(y,m)){
       const key = pollKey(date);
-      if(!existing.has(key)){ await markPollExists(key); existing.add(key); }
+      if(!existing.has(key)){ missing.push(key); existing.add(key); }
     }
   }
+  await Promise.all(missing.map(key => markPollExists(key)));
   return Array.from(existing);
 }
 function removeFromAll(data, name){
@@ -635,15 +644,8 @@ function removeFromAll(data, name){
   data.absent = data.absent.filter(p => p.name.toLowerCase() !== name.toLowerCase());
 }
 
-const AVATAR_PALETTE = ['#a6293b','#c9982b','#1d6249','#7e1e2c','#3d7a9e','#8a5a2b','#5c4a8a','#2c7a6b'];
-function avatarColor(name){
-  let hash = 0;
-  for(let i=0;i<name.length;i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
-}
-function avatarHtml(name){
-  const letter = (name.trim().charAt(0) || '?').toUpperCase();
-  return `<div class="avatar" style="background:${avatarColor(name)}">${escapeHtml(letter)}</div>`;
+function numberBadgeHtml(n){
+  return `<div class="avatar avatar-number">${n}</div>`;
 }
 
 async function renderInscriptions(){
@@ -679,13 +681,16 @@ async function renderInscriptions(){
     return;
   }
 
+  // Récupère les données de toutes les soirées en parallèle (au lieu d'une par
+  // une) pour réduire nettement le temps de chargement, surtout en mode app.
+  const dataList = await Promise.all(upcoming.map(dateKey => getPollData(dateKey)));
+
   container.innerHTML = '';
-  for(const dateKey of upcoming){
+  upcoming.forEach((dateKey, idx) => {
     const [y,m,d] = dateKey.split('-').map(Number);
     const date = new Date(y, m-1, d, 20, 0, 0);
-    const data = await getPollData(dateKey);
-    container.appendChild(buildNightCard(dateKey, date, data));
-  }
+    container.appendChild(buildNightCard(dateKey, date, dataList[idx]));
+  });
   footer.textContent = `Les soirées sont générées automatiquement pour le mois en cours et le mois suivant.`;
 }
 
@@ -728,11 +733,13 @@ function listSection(title, people, numbered){
   if(people.length === 0){
     return `<div class="list-section"><h3>${title} (0)</h3><div class="empty-line">Personne pour l'instant</div></div>`;
   }
-  const rows = people.map((p) => {
+  const rows = people.map((p, i) => {
     const canUnreg = myName && p.name.toLowerCase() === myName.toLowerCase();
+    const badge = numbered ? numberBadgeHtml(i+1) : '';
+    const nameClass = numbered ? 'name' : 'name name-absent';
     return `
       <div class="person-row">
-        <div class="who">${avatarHtml(p.name)}<span class="name">${escapeHtml(p.name)}</span></div>
+        <div class="who">${badge}<span class="${nameClass}">${escapeHtml(p.name)}</span></div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="ts">${formatTs(p.ts)}</span>
           ${canUnreg ? `<button class="unreg" data-unreg="${escapeHtml(p.name)}">Se désinscrire</button>` : ''}
