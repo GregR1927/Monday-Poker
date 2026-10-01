@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>♠️♦️ Monday Poker ♣️♥️</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -14,6 +14,8 @@
 <meta name="apple-mobile-web-app-title" content="Monday Poker">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
   :root{
     --felt-dark:#0f3d2e;
@@ -26,45 +28,47 @@
     --red-deep:#7e1e2c;
     --gold:#c9982b;
     --gold-light:#e0b94f;
+    --gold-deep:#c9982b;
     --line: rgba(28,26,20,0.14);
+    --brass:#b8863b;
+    --brass-light:#d4a758;
+    --silver:#9a9488;
+    --bronze:#a06a3f;
+    --text-muted:#8a8672;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;}
   body{
-    margin:0;
     background:
       radial-gradient(circle at 20% -10%, var(--felt-light), transparent 55%),
       var(--felt-dark);
     color:var(--ink);
     font-family:'Inter', system-ui, sans-serif;
     min-height:100vh;
-    padding-bottom:60px;
+    padding-bottom:calc(78px + env(safe-area-inset-bottom));
   }
   .wrap{max-width:640px;margin:0 auto;padding:0 18px;}
 
   header.top{
-    padding:36px 18px 22px;
+    padding:32px 18px 6px;
     text-align:center;
-  }
-  header.top .suits{
-    font-size:22px;
-    letter-spacing:10px;
-    opacity:0.85;
-    margin-bottom:6px;
   }
   header.top h1{
     font-family:'Fraunces', serif;
     font-weight:600;
-    font-size:clamp(28px,7vw,40px);
+    font-size:clamp(26px,7vw,36px);
     color:var(--cream);
-    margin:0 0 8px;
+    margin:0;
     line-height:1.05;
   }
-  header.top p{
+
+  .tab-intro{
     color:var(--cream-dim);
-    font-size:14.5px;
+    font-size:14px;
     max-width:420px;
-    margin:0 auto;
+    margin:14px auto 18px;
     line-height:1.5;
+    text-align:center;
   }
 
   .name-bar{
@@ -75,7 +79,7 @@
     display:flex;
     align-items:center;
     gap:10px;
-    margin-bottom:26px;
+    margin:0 0 22px;
   }
   .name-bar label{
     color:var(--cream-dim);
@@ -138,53 +142,76 @@
     margin-bottom:16px;
   }
 
-  .capacity{
+  .seats{
     display:flex;
+    flex-wrap:wrap;
+    gap:5px;
     align-items:center;
-    gap:10px;
     margin-bottom:16px;
   }
-  .capacity .bar{
-    flex:1;
-    height:7px;
-    background:var(--cream-dim);
-    border-radius:5px;
-    overflow:hidden;
+  .seat-chip{
+    width:19px;
+    height:19px;
+    border-radius:50%;
+    flex-shrink:0;
   }
-  .capacity .bar-fill{
-    height:100%;
-    background:linear-gradient(90deg, var(--felt), var(--felt-light));
-    transition:width .3s;
+  .seat-chip.filled{
+    background:
+      radial-gradient(circle, var(--cream) 30%, transparent 31%),
+      repeating-conic-gradient(var(--red) 0deg 22.5deg, var(--gold-deep) 22.5deg 45deg);
+    box-shadow:0 1px 2px rgba(0,0,0,0.35), inset 0 0 0 2px var(--ink);
   }
-  .capacity .count{
+  .seat-chip.empty{
+    background:transparent;
+    border:1.5px dashed var(--cream-dim);
+  }
+  .seats .count{
     font-size:12.5px;
     font-weight:600;
     color:var(--felt);
     white-space:nowrap;
+    margin-left:4px;
   }
 
   .vote-row{
-    display:grid;
-    grid-template-columns:1fr 1fr 1fr;
-    gap:8px;
+    display:flex;
+    background:var(--cream-dim);
+    border-radius:12px;
+    padding:4px;
+    gap:4px;
     margin-bottom:16px;
   }
   .vote-btn{
+    flex:1;
     border:none;
+    background:transparent;
     border-radius:9px;
     padding:10px 6px;
-    font-size:13px;
+    font-size:13.5px;
     font-weight:600;
     font-family:inherit;
+    color:#6b6858;
     cursor:pointer;
-    transition:transform .12s, filter .12s;
+    transition:transform .12s, background .2s, color .2s, box-shadow .2s;
   }
   .vote-btn:active{transform:scale(0.96);}
-  .vote-btn.present{background:var(--felt);color:var(--cream);}
-  .vote-btn.wait{background:var(--gold);color:var(--ink);}
-  .vote-btn.absent{background:transparent;color:var(--red-deep);border:1.5px solid var(--red-deep);}
-  .vote-btn.active-vote{outline:2.5px solid var(--red);outline-offset:2px;}
+  .vote-btn.active-vote.present{background:var(--gold); color:var(--ink); box-shadow:0 2px 6px rgba(201,152,43,0.4);}
+  .vote-btn.active-vote.absent{background:var(--red-deep); color:var(--cream); box-shadow:0 2px 6px rgba(126,30,44,0.35);}
   .vote-btn:disabled{opacity:0.4;cursor:default;}
+
+  .avatar{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    font-weight:700;
+    color:#fff;
+    flex-shrink:0;
+    font-family:'Fraunces', serif;
+  }
 
   .notice{
     font-size:12.5px;
@@ -211,24 +238,16 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding:8px 0;
+    padding:9px 0;
     border-bottom:1px solid var(--line);
     gap:10px;
   }
   .person-row:last-child{border-bottom:none;}
   .person-row .who{
     display:flex;
-    align-items:baseline;
-    gap:8px;
+    align-items:center;
+    gap:10px;
     min-width:0;
-  }
-  .person-row .idx{
-    font-family:'Fraunces', serif;
-    font-weight:600;
-    color:var(--red);
-    font-size:14px;
-    width:18px;
-    flex-shrink:0;
   }
   .person-row .name{
     font-weight:600;
@@ -259,7 +278,6 @@
     font-style:italic;
     padding:4px 0;
   }
-
   .full-badge{
     display:inline-block;
     font-size:11px;
@@ -271,7 +289,6 @@
     margin-left:6px;
     vertical-align:middle;
   }
-
   .empty-state{
     text-align:center;
     color:var(--cream-dim);
@@ -286,42 +303,201 @@
     padding:0 20px;
     line-height:1.6;
   }
+
+  /* ---------- bottom nav ---------- */
+  nav.tabbar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:var(--ink);
+    border-top:1px solid rgba(243,236,217,0.1);
+    display:flex;
+    padding-bottom:env(safe-area-inset-bottom);
+    z-index:20;
+  }
+  nav.tabbar button{
+    flex:1;
+    background:none;
+    border:none;
+    color:rgba(243,236,217,0.5);
+    font-family:inherit;
+    font-size:11px;
+    font-weight:600;
+    padding:11px 4px 9px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    cursor:pointer;
+  }
+  nav.tabbar button .ico{font-size:19px; line-height:1;}
+  nav.tabbar button.active{color:var(--gold-light);}
+
+  /* ---------- generic buttons ---------- */
+  .btn{
+    font-family:inherit;
+    font-weight:600;
+    font-size:14.5px;
+    border:none;
+    border-radius:10px;
+    padding:11px 16px;
+    cursor:pointer;
+  }
+  .btn-brass{background:var(--brass); color:#fff;}
+  .btn-outline{background:transparent; color:var(--cream); border:1.5px solid rgba(230,220,192,0.3);}
+  .btn:disabled{opacity:0.35; cursor:default;}
+  .fab-row{display:flex; justify-content:flex-end; margin:6px 0 18px;}
+
+  /* ---------- tracker: session list ---------- */
+  .session-row{
+    background:var(--cream);
+    border-radius:13px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    color:var(--ink);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .session-row .left{min-width:0;}
+  .session-row .date{font-family:'Fraunces', serif; font-weight:600; font-size:16px;}
+  .session-row .meta{font-size:12.5px; color:var(--text-muted); margin-top:2px;}
+  .status-pill{font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; white-space:nowrap; flex-shrink:0;}
+  .status-pill.upcoming{background:rgba(28,26,20,0.08); color:var(--ink);}
+  .status-pill.ongoing{background:var(--brass); color:#fff;}
+  .status-pill.completed{background:var(--ink); color:var(--cream);}
+  .status-pill.cancelled{background:transparent; color:var(--text-muted); border:1px solid var(--text-muted);}
+
+  /* ---------- sheet ---------- */
+  .sheet-backdrop{position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:30; display:flex; align-items:flex-end;}
+  .sheet{
+    background:var(--cream); color:var(--ink); width:100%; max-height:88vh; overflow-y:auto;
+    border-radius:20px 20px 0 0; padding:22px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  .sheet h2{font-family:'Fraunces', serif; font-weight:600; font-size:21px; margin:0 0 18px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--text-muted); margin-bottom:6px;}
+  .field input, .field select{
+    width:100%; background:#fff; border:1.5px solid rgba(28,26,20,0.15); border-radius:9px;
+    padding:11px 12px; font-size:15px; font-family:inherit; color:var(--ink);
+  }
+  .chip-row{display:flex; flex-wrap:wrap; gap:7px; margin-top:8px;}
+  .chip{
+    background:var(--ink); color:var(--cream); border-radius:20px; padding:7px 12px 7px 14px;
+    font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:8px;
+  }
+  .chip button{background:none; border:none; color:rgba(243,236,217,0.6); font-size:14px; cursor:pointer; padding:0; line-height:1;}
+  .add-player-row{display:flex; gap:8px;}
+  .add-player-row input, .add-player-row select{flex:1;}
+
+  /* ---------- session detail ---------- */
+  .back-link{
+    display:inline-flex; align-items:center; gap:5px;
+    color:var(--gold-light); font-weight:600; font-size:13.5px;
+    background:none; border:none; cursor:pointer; padding:0; margin-bottom:16px; font-family:inherit;
+  }
+  .detail-card{background:var(--cream); color:var(--ink); border-radius:16px; padding:20px; margin-bottom:16px;}
+  .detail-card h2{font-family:'Fraunces', serif; font-weight:600; font-size:20px; margin:0 0 3px;}
+  .detail-card .sub{font-size:13px; color:var(--text-muted); margin-bottom:18px;}
+
+  .result-row{display:grid; grid-template-columns:1fr 64px 84px; gap:8px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line);}
+  .result-row:last-child{border-bottom:none;}
+  .result-row .pname{font-weight:600; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .result-row input{
+    width:100%; border:1.5px solid rgba(28,26,20,0.15); border-radius:8px; padding:7px 6px;
+    font-size:14px; font-family:inherit; text-align:center; background:#fff; color:var(--ink);
+  }
+  .col-labels{
+    display:grid; grid-template-columns:1fr 64px 84px; gap:8px; font-size:10.5px; font-weight:700;
+    color:var(--text-muted); padding-bottom:6px; border-bottom:1.5px solid var(--ink); margin-bottom:2px;
+  }
+  .session-actions{display:flex; gap:10px; margin-top:18px;}
+
+  /* ---------- podium ---------- */
+  .podium{display:flex; align-items:flex-end; justify-content:center; gap:10px; margin:8px 0 22px; padding:0 4px;}
+  .podium .spot{flex:1; max-width:120px; text-align:center; animation:riseUp .55s cubic-bezier(.2,.8,.3,1) both;}
+  .podium .spot.p1{animation-delay:.15s;}
+  .podium .spot.p2{animation-delay:.02s;}
+  .podium .spot.p3{animation-delay:.28s;}
+  @keyframes riseUp{ from{opacity:0; transform:translateY(18px);} to{opacity:1; transform:translateY(0);} }
+  .podium .medal{font-size:22px; margin-bottom:4px;}
+  .podium .pname{font-weight:700; font-size:13.5px; margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .podium .pgain{font-family:'Fraunces', serif; font-weight:600; font-size:15px; color:var(--brass); margin-bottom:8px;}
+  .podium .block{border-radius:10px 10px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:8px; font-family:'Fraunces', serif; font-weight:700; font-size:15px; color:var(--ink);}
+  .podium .p1 .block{height:74px; background:linear-gradient(180deg, var(--brass-light), var(--brass));}
+  .podium .p2 .block{height:52px; background:linear-gradient(180deg, #c7c2b8, var(--silver));}
+  .podium .p3 .block{height:38px; background:linear-gradient(180deg, #c99364, var(--bronze));}
+
+  /* ---------- rankings ---------- */
+  .sort-row{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px;}
+  .sort-chip{
+    flex-shrink:0; background:var(--felt); color:var(--cream-dim); border:1px solid rgba(243,236,217,0.15);
+    border-radius:20px; padding:7px 14px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer;
+  }
+  .sort-chip.active{background:var(--brass); color:#fff; border-color:var(--brass);}
+
+  .rank-table{background:var(--cream); color:var(--ink); border-radius:14px; overflow:hidden;}
+  .rank-row{display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .rank-row:last-child{border-bottom:none;}
+  .rank-num{font-family:'Fraunces', serif; font-weight:600; font-size:15px; color:var(--text-muted); width:20px; flex-shrink:0;}
+  .rank-num.gold{color:var(--brass);}
+  .rank-num.silver{color:var(--silver);}
+  .rank-num.bronze{color:var(--bronze);}
+  .rank-name{font-weight:600; font-size:14.5px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rank-metric{font-family:'Fraunces', serif; font-weight:600; font-size:15px; text-align:right;}
+  .rank-sub{font-size:11px; color:var(--text-muted); text-align:right;}
+
+  /* ---------- player detail ---------- */
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;}
+  .stat-box{background:var(--cream); color:var(--ink); border-radius:13px; padding:14px 16px;}
+  .stat-box .n{font-family:'Fraunces', serif; font-weight:600; font-size:22px;}
+  .stat-box .l{font-size:11.5px; color:var(--text-muted); margin-top:2px;}
+  .trophy-row{display:flex; gap:18px; margin-bottom:20px;}
+  .trophy-row .t{text-align:center;}
+  .trophy-row .t .n{font-family:'Fraunces', serif; font-weight:700; font-size:20px; display:block;}
+  .trophy-row .t .l{font-size:11px; color:var(--text-muted);}
+  .history-row{display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
+  .history-row:last-child{border-bottom:none;}
+  .history-row .l .d{color:var(--text-muted); font-size:11.5px; display:block; margin-top:1px;}
+  .history-row .r{text-align:right; font-weight:600;}
+  small.hint{display:block; color:var(--text-muted); font-size:12px; margin:0 0 16px;}
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <h1>♠️♦️ Monday Poker ♣️♥️</h1>
-    <p>Inscris-toi pour les prochaines soirées. 10 places en présentiel, le reste passe en liste d'attente.</p>
   </header>
 
-  <div class="name-bar">
+  <p class="tab-intro" id="inscriptionsIntro">Absent ou présent ? Indique-le afin que chacun puisse s'organiser. Les soirées sont limitées aux 10 premiers inscrits.</p>
+  <div class="name-bar" id="nameBarWrap">
     <label for="nameInput">Ton prénom</label>
     <input id="nameInput" type="text" placeholder="ex. Julien" maxlength="30">
     <div class="status" id="nameStatus"></div>
   </div>
 
-  <div id="nights"></div>
-  <div class="footer-note" id="footerNote"></div>
+  <div id="view"></div>
 </div>
 
+<nav class="tabbar">
+  <button data-tab="inscriptions"><span class="ico">🃏</span>Inscriptions</button>
+  <button data-tab="sessions"><span class="ico">📋</span>Sessions</button>
+  <button data-tab="results"><span class="ico">🏆</span>Résultats</button>
+  <button data-tab="participation"><span class="ico">👥</span>Participations</button>
+</nav>
+
 <script>
-// Filet de sécurité : si une erreur bloque le script avant même son
-// initialisation normale, on l'affiche clairement au lieu de laisser
-// une page vide ou un message générique illisible.
+// Filet de sécurité global
 window.addEventListener('error', (e) => {
-  const el = document.getElementById('nights');
-  if(el){
-    el.innerHTML = `<div class="empty-state">Erreur au chargement de l'app :<br><b>${(e && e.message) ? e.message : 'erreur inconnue'}</b><br><small>${e.filename ? e.filename.split('/').pop() : ''}${e.lineno ? ':'+e.lineno : ''}</small></div>`;
-  }
+  const el = document.getElementById('view');
+  if(el) el.innerHTML = `<div class="empty-state">Erreur au chargement de l'app :<br><b>${(e && e.message) ? e.message : 'erreur inconnue'}</b><br><small>${e.filename ? e.filename.split('/').pop() : ''}${e.lineno ? ':'+e.lineno : ''}</small></div>`;
 });
 window.addEventListener('unhandledrejection', (e) => {
-  const el = document.getElementById('nights');
+  const el = document.getElementById('view');
   if(el){
     const reason = e && e.reason ? (e.reason.message || String(e.reason)) : 'erreur inconnue';
-    el.innerHTML = `<div class="empty-state">Erreur silencieuse au chargement :<br><b>${reason}</b></div>`;
+    el.innerHTML = `<div class="empty-state">Erreur silencieuse :<br><b>${reason}</b></div>`;
   }
 });
 
@@ -329,10 +505,13 @@ const MAX_PRESENT = 10;
 const SUITS = "♥️ ♣️ ♦️ ♠️";
 let myName = "";
 let nameSaveTimer = null;
+let currentTab = 'inscriptions';
+let openSessionId = null;
+let openPlayerName = null;
+let resultsSort = 'net';
+let statsYear = 'all';
+let trackerSessions = [];
 
-// ---------- storage helpers ----------
-// ⚠️ Remplace cette URL par celle de TA base Firebase Realtime Database
-// (tu l'obtiens dans la console Firebase, voir instructions fournies séparément)
 const FIREBASE_DB_URL = "https://monday-poker-default-rtdb.firebaseio.com";
 try{
   firebase.initializeApp({ databaseURL: FIREBASE_DB_URL });
@@ -340,29 +519,23 @@ try{
   console.error('Échec de l\'initialisation Firebase :', e);
 }
 
-function getPersonal(key){
-  try{ return localStorage.getItem(key); }
-  catch(e){ return null; }
-}
-function setPersonal(key, value){
-  try{ localStorage.setItem(key, value); }catch(e){ console.error(e); }
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
 }
 function getPersonal(key){
-  try{ return localStorage.getItem(key); }
-  catch(e){ return null; }
+  try{ return localStorage.getItem(key); } catch(e){ return null; }
 }
 function setPersonal(key, value){
-  try{ localStorage.setItem(key, value); }catch(e){ console.error(e); }
+  try{ localStorage.setItem(key, value); } catch(e){ console.error(e); }
 }
 
-// Écriture simple (sans risque de conflit : chaque soirée a son propre nœud,
-// donc créer une soirée n'écrase jamais celle d'une autre).
+/* ================= INSCRIPTIONS (Monday Poker) ================= */
+
 async function markPollExists(dateKey){
-  try{
-    await firebase.database().ref(`polls/${dateKey}`).set(true);
-  }catch(e){ console.error(e); }
+  try{ await firebase.database().ref(`polls/${dateKey}`).set(true); }catch(e){ console.error(e); }
 }
-
 async function listPollDates(){
   try{
     const snap = await firebase.database().ref('polls').once('value');
@@ -370,29 +543,13 @@ async function listPollDates(){
     return val ? Object.keys(val) : [];
   }catch(e){ console.error(e); return []; }
 }
-
 async function getPollData(dateKey){
   try{
     const snap = await firebase.database().ref(`data/${dateKey}`).once('value');
     const val = snap.val() || {};
-    // Firebase ne stocke pas les tableaux vides (le champ disparaît tout
-    // simplement), donc on les recrée systématiquement à la lecture pour
-    // éviter tout plantage sur present/waitlist/absent manquants.
-    return {
-      present: val.present || [],
-      waitlist: val.waitlist || [],
-      absent: val.absent || []
-    };
-  }catch(e){
-    console.error(e);
-    return {present:[], waitlist:[], absent:[]};
-  }
+    return { present: val.present || [], waitlist: val.waitlist || [], absent: val.absent || [] };
+  }catch(e){ console.error(e); return {present:[], waitlist:[], absent:[]}; }
 }
-
-// Modification atomique : Firebase relit la donnée la plus récente et
-// réessaie automatiquement en cas d'écriture concurrente, donc deux
-// personnes qui s'inscrivent en même temps ne peuvent plus s'écraser
-// l'une l'autre ni créer de doublons.
 async function updatePollData(dateKey, updater){
   const ref = firebase.database().ref(`data/${dateKey}`);
   const result = await ref.transaction((current) => {
@@ -405,159 +562,106 @@ async function updatePollData(dateKey, updater){
   return result.snapshot.val();
 }
 
-// ---------- migration (une seule fois) ----------
-// Convertit automatiquement les données enregistrées avec l'ancien système
-// de stockage vers le nouveau format, sans rien perdre. Un verrou garantit
-// qu'un seul appareil fait la conversion même si plusieurs personnes
-// ouvrent l'app en même temps juste après la mise à jour.
 async function migrateOldDataIfNeeded(){
   try{
     const lockRef = firebase.database().ref('migration-v2-done');
-    const lockResult = await lockRef.transaction(current => {
-      if(current) return undefined; // déjà migré (ou en cours) ailleurs : on abandonne
-      return true;
-    });
+    const lockResult = await lockRef.transaction(current => current ? undefined : true);
     if(!lockResult.committed) return;
-
     const oldIndexSnap = await firebase.database().ref('polls-index').once('value');
     const oldIndexRaw = oldIndexSnap.val();
-    if(!oldIndexRaw) return; // rien à migrer
-
+    if(!oldIndexRaw) return;
     let oldKeys = [];
     try{ oldKeys = JSON.parse(oldIndexRaw); }catch(e){ oldKeys = []; }
-
     for(const k of oldKeys){
       const dateKey = k.replace('poll:','');
       const oldDataSnap = await firebase.database().ref(`data:${dateKey}`).once('value');
       const raw = oldDataSnap.val();
       let data = {present:[], waitlist:[], absent:[]};
-      if(raw){
-        try{ data = JSON.parse(raw); }catch(e){}
-      }
+      if(raw){ try{ data = JSON.parse(raw); }catch(e){} }
       await firebase.database().ref(`polls/${dateKey}`).set(true);
       await firebase.database().ref(`data/${dateKey}`).set(data);
     }
-
-    // Nettoyage des anciennes clés une fois la copie terminée
     await firebase.database().ref('polls-index').remove();
     for(const k of oldKeys){
       const dateKey = k.replace('poll:','');
       await firebase.database().ref(`data:${dateKey}`).remove();
     }
-  }catch(e){
-    console.error('Migration échouée (non bloquant) :', e);
-  }
+  }catch(e){ console.error('Migration échouée (non bloquant) :', e); }
 }
 
-// ---------- date generation ----------
-// Renvoie tous les lundis 20h00 d'un mois donné (0-indexed month)
 function mondaysOfMonth(year, month){
   const result = [];
   const d = new Date(year, month, 1);
   while(d.getMonth() === month){
-    if(d.getDay() === 1){
-      const night = new Date(year, month, d.getDate(), 20, 0, 0);
-      result.push(night);
-    }
+    if(d.getDay() === 1){ result.push(new Date(year, month, d.getDate(), 20, 0, 0)); }
     d.setDate(d.getDate() + 1);
   }
   return result;
 }
-
 function pollKey(date){
   const y = date.getFullYear();
   const m = String(date.getMonth()+1).padStart(2,'0');
   const dd = String(date.getDate()).padStart(2,'0');
   return `${y}-${m}-${dd}`;
 }
-
 function formatTitle(date){
   const dateStr = date.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
   return `${dateStr.charAt(0).toUpperCase()}${dateStr.slice(1)} 20:00`;
 }
-
 function formatTs(ts){
   const d = new Date(ts);
   const date = d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'});
   const time = d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
   return `Inscrit le ${date} à ${time}`;
 }
-
-// Simule la génération automatique fin de mois : on s'assure que le mois
-// courant et le mois suivant ont toujours leurs soirées prêtes.
-// Chaque soirée vit dans son propre nœud Firebase, donc la créer n'écrase
-// jamais celles déjà créées par quelqu'un d'autre (fini les doublons).
 async function ensurePollsExist(){
   const today = new Date();
   const months = [
     {y: today.getFullYear(), m: today.getMonth()},
     {y: today.getMonth() === 11 ? today.getFullYear()+1 : today.getFullYear(), m: (today.getMonth()+1) % 12}
   ];
-
   const existing = new Set(await listPollDates());
-
   for(const {y,m} of months){
     for(const date of mondaysOfMonth(y,m)){
       const key = pollKey(date);
-      if(!existing.has(key)){
-        await markPollExists(key);
-        existing.add(key);
-      }
+      if(!existing.has(key)){ await markPollExists(key); existing.add(key); }
     }
   }
   return Array.from(existing);
 }
-
 function removeFromAll(data, name){
   data.present = data.present.filter(p => p.name.toLowerCase() !== name.toLowerCase());
   data.waitlist = data.waitlist.filter(p => p.name.toLowerCase() !== name.toLowerCase());
   data.absent = data.absent.filter(p => p.name.toLowerCase() !== name.toLowerCase());
 }
 
-// ---------- rendering ----------
-// Verrou : empêche deux rafraîchissements de tourner en même temps
-// (c'est ce qui causait les doublons de cartes lors d'un vote, car le
-// vote lui-même ET la notification temps réel déclenchaient chacun un
-// rendu en parallèle).
-let renderInProgress = false;
-let renderAgainRequested = false;
-
-async function renderAll(){
-  if(renderInProgress){
-    renderAgainRequested = true;
-    return;
-  }
-  renderInProgress = true;
-  try{
-    await renderAllInner();
-  } catch(e){
-    const el = document.getElementById('nights');
-    if(el) el.innerHTML = `<div class="empty-state">Erreur pendant le rafraîchissement :<br><b>${(e && e.message) ? e.message : String(e)}</b></div>`;
-    console.error('Erreur renderAll :', e);
-  } finally {
-    renderInProgress = false;
-    if(renderAgainRequested){
-      renderAgainRequested = false;
-      renderAll();
-    }
-  }
+const AVATAR_PALETTE = ['#a6293b','#c9982b','#1d6249','#7e1e2c','#3d7a9e','#8a5a2b','#5c4a8a','#2c7a6b'];
+function avatarColor(name){
+  let hash = 0;
+  for(let i=0;i<name.length;i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+function avatarHtml(name){
+  const letter = (name.trim().charAt(0) || '?').toUpperCase();
+  return `<div class="avatar" style="background:${avatarColor(name)}">${escapeHtml(letter)}</div>`;
 }
 
-async function renderAllInner(){
+async function renderInscriptions(){
+  const view = document.getElementById('view');
+  view.innerHTML = `<div id="nights"><div class="empty-state">Chargement des soirées…</div></div><div class="footer-note" id="footerNote"></div>`;
+
   const container = document.getElementById('nights');
   const footer = document.getElementById('footerNote');
-  container.innerHTML = '<div class="empty-state">Chargement des soirées…</div>';
 
   let index;
   try{
     index = await ensurePollsExist();
   }catch(e){
-    container.innerHTML = `<div class="empty-state">Erreur technique (diagnostic) :<br>${escapeHtml(String(e && e.message ? e.message : e))}</div>`;
+    container.innerHTML = `<div class="empty-state">Erreur technique :<br>${escapeHtml(String(e && e.message ? e.message : e))}</div>`;
     return;
   }
-
   if(!Array.isArray(index)){
-    container.innerHTML = `<div class="empty-state">Diagnostic : ensurePollsExist n'a pas renvoyé de liste valide (${escapeHtml(String(index))}).</div>`;
+    container.innerHTML = `<div class="empty-state">Diagnostic : liste invalide.</div>`;
     return;
   }
 
@@ -565,13 +669,13 @@ async function renderAllInner(){
   const upcoming = index
     .filter(k => {
       const [y,m,d] = k.split('-').map(Number);
-      const dt = new Date(y, m-1, d, 22, 0, 0); // reste affiché jusqu'à 22h le soir même
+      const dt = new Date(y, m-1, d, 22, 0, 0);
       return dt >= now;
     })
-    .sort(); // format AAAA-MM-JJ : le tri alphabétique = tri chronologique
+    .sort();
 
   if(upcoming.length === 0){
-    container.innerHTML = `<div class="empty-state">Aucune soirée à venir pour le moment.<br><small>(diag-1 : ${index.length} soirée(s) trouvée(s) au total en base)</small></div>`;
+    container.innerHTML = `<div class="empty-state">Aucune soirée à venir pour le moment.</div>`;
     return;
   }
 
@@ -580,50 +684,36 @@ async function renderAllInner(){
     const [y,m,d] = dateKey.split('-').map(Number);
     const date = new Date(y, m-1, d, 20, 0, 0);
     const data = await getPollData(dateKey);
-    container.appendChild(buildCard(dateKey, date, data));
+    container.appendChild(buildNightCard(dateKey, date, data));
   }
-
-  footer.textContent = `Les soirées sont générées automatiquement pour le mois en cours et le mois suivant. (build diag-1)`;
+  footer.textContent = `Les soirées sont générées automatiquement pour le mois en cours et le mois suivant.`;
 }
 
-function buildCard(dateKey, date, data){
+function buildNightCard(dateKey, date, data){
   const card = document.createElement('div');
   card.className = 'night-card';
-
   const isFull = data.present.length >= MAX_PRESENT;
   const myVote = getMyVote(data);
+  const presentBtnBlocked = isFull && myVote !== 'present';
+  const seatChips = Array.from({length: MAX_PRESENT}, (_, i) =>
+    `<div class="seat-chip ${i < data.present.length ? 'filled' : 'empty'}"></div>`
+  ).join('');
 
   card.innerHTML = `
     <div class="suits-row">${SUITS}</div>
     <h2>${formatTitle(date)}</h2>
     <div class="subline">Soirée poker hebdomadaire</div>
-
-    <div class="capacity">
-      <div class="bar"><div class="bar-fill" style="width:${Math.min(100,(data.present.length/MAX_PRESENT)*100)}%"></div></div>
-      <div class="count">${data.present.length}/${MAX_PRESENT} présents${isFull ? '<span class="full-badge">Complet</span>' : ''}</div>
-    </div>
-
+    <div class="seats">${seatChips}<span class="count">${data.present.length}/${MAX_PRESENT}${isFull ? '<span class="full-badge">Complet</span>' : ''}</span></div>
     <div class="vote-row">
-      <button class="vote-btn present ${myVote==='present'?'active-vote':''}" data-action="present">Présent</button>
-      <button class="vote-btn wait ${myVote==='waitlist'?'active-vote':''}" data-action="waitlist">Liste d'attente</button>
+      <button class="vote-btn present ${myVote==='present'?'active-vote':''}" data-action="present" ${presentBtnBlocked ? 'disabled' : ''}>${presentBtnBlocked ? 'Complet' : 'Présent'}</button>
       <button class="vote-btn absent ${myVote==='absent'?'active-vote':''}" data-action="absent">Absent</button>
     </div>
-
     <div class="notice" data-notice></div>
-
     ${listSection('Présents', data.present, true)}
-    ${listSection("Liste d'attente", data.waitlist, false)}
     ${listSection('Absents', data.absent, false)}
   `;
-
-  card.querySelectorAll('.vote-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleVote(dateKey, btn.dataset.action, card));
-  });
-
-  card.querySelectorAll('[data-unreg]').forEach(btn => {
-    btn.addEventListener('click', () => handleUnregister(dateKey, btn.dataset.unreg, card));
-  });
-
+  card.querySelectorAll('.vote-btn').forEach(btn => btn.addEventListener('click', () => handleVote(dateKey, btn.dataset.action, card)));
+  card.querySelectorAll('[data-unreg]').forEach(btn => btn.addEventListener('click', () => handleUnregister(dateKey, btn.dataset.unreg, card)));
   return card;
 }
 
@@ -631,23 +721,18 @@ function getMyVote(data){
   if(!myName) return null;
   const n = myName.toLowerCase();
   if(data.present.some(p=>p.name.toLowerCase()===n)) return 'present';
-  if(data.waitlist.some(p=>p.name.toLowerCase()===n)) return 'waitlist';
   if(data.absent.some(p=>p.name.toLowerCase()===n)) return 'absent';
   return null;
 }
-
 function listSection(title, people, numbered){
   if(people.length === 0){
     return `<div class="list-section"><h3>${title} (0)</h3><div class="empty-line">Personne pour l'instant</div></div>`;
   }
-  const rows = people.map((p, i) => {
+  const rows = people.map((p) => {
     const canUnreg = myName && p.name.toLowerCase() === myName.toLowerCase();
     return `
       <div class="person-row">
-        <div class="who">
-          ${numbered ? `<span class="idx">${i+1}</span>` : ''}
-          <span class="name">${escapeHtml(p.name)}</span>
-        </div>
+        <div class="who">${avatarHtml(p.name)}<span class="name">${escapeHtml(p.name)}</span></div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="ts">${formatTs(p.ts)}</span>
           ${canUnreg ? `<button class="unreg" data-unreg="${escapeHtml(p.name)}">Se désinscrire</button>` : ''}
@@ -657,13 +742,6 @@ function listSection(title, people, numbered){
   return `<div class="list-section"><h3>${title} (${people.length})</h3>${rows}</div>`;
 }
 
-function escapeHtml(str){
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-// ---------- actions ----------
 async function handleVote(dateKey, action, cardEl){
   if(!myName){
     document.getElementById('nameInput').focus();
@@ -671,113 +749,631 @@ async function handleVote(dateKey, action, cardEl){
     setTimeout(()=>{ document.getElementById('nameInput').style.borderColor = ''; }, 1200);
     return;
   }
-
   const notice = cardEl.querySelector('[data-notice]');
   notice.classList.remove('show');
-
-  let wentToWaitlist = false;
+  let refused = false;
   const nameAtClick = myName;
 
   await updatePollData(dateKey, (data) => {
-    removeFromAll(data, nameAtClick);
-    const entry = { name: nameAtClick, ts: Date.now() };
-
     if(action === 'present'){
-      if(data.present.length < MAX_PRESENT){
-        data.present.push(entry);
-      } else {
-        data.waitlist.push(entry);
-        wentToWaitlist = true;
-      }
-    } else if(action === 'waitlist'){
-      data.waitlist.push(entry);
-    } else if(action === 'absent'){
-      data.absent.push(entry);
+      const alreadyPresent = data.present.some(p => p.name.toLowerCase() === nameAtClick.toLowerCase());
+      if(!alreadyPresent && data.present.length >= MAX_PRESENT){ refused = true; return data; }
     }
+    removeFromAll(data, nameAtClick);
+    if(action === 'present') data.present.push({ name: nameAtClick, ts: Date.now() });
+    else if(action === 'absent') data.absent.push({ name: nameAtClick, ts: Date.now() });
     return data;
   });
 
-  if(wentToWaitlist){
-    notice.textContent = "Complet : tu as été placé(e) en liste d'attente.";
+  if(refused){
+    notice.textContent = "Complet : cette soirée est limitée aux 10 premiers inscrits.";
     notice.classList.add('show');
   }
-
-  await renderAll();
+  await render();
 }
-
 async function handleUnregister(dateKey, name, cardEl){
-  await updatePollData(dateKey, (data) => {
-    removeFromAll(data, name);
-    // Promeut le premier de la liste d'attente si une place se libère
-    if(data.present.length < MAX_PRESENT && data.waitlist.length > 0){
-      data.present.push(data.waitlist.shift());
-    }
-    return data;
-  });
-
-  await renderAll();
+  await updatePollData(dateKey, (data) => { removeFromAll(data, name); return data; });
+  await render();
 }
 
-// ---------- name handling ----------
 async function initName(){
-  const saved = await getPersonal('my-name');
+  const saved = getPersonal('my-name');
   if(saved){
     myName = saved;
     document.getElementById('nameInput').value = saved;
   }
 }
-
 document.getElementById('nameInput').addEventListener('input', (e) => {
   myName = e.target.value.trim();
   const status = document.getElementById('nameStatus');
   status.classList.remove('show');
   clearTimeout(nameSaveTimer);
   nameSaveTimer = setTimeout(async () => {
-    await setPersonal('my-name', myName);
+    setPersonal('my-name', myName);
     status.classList.add('show');
     setTimeout(()=>status.classList.remove('show'), 1500);
-    await renderAll();
+    if(currentTab === 'inscriptions') await renderInscriptions();
   }, 500);
 });
 
-// ---------- init ----------
-(async function init(){
-  try{
-    await initName();
-    await migrateOldDataIfNeeded();
-    await renderAll();
-  }catch(e){
-    const el = document.getElementById('nights');
-    if(el) el.innerHTML = `<div class="empty-state">Erreur au démarrage :<br><b>${(e && e.message) ? e.message : String(e)}</b></div>`;
-    console.error('Erreur au démarrage :', e);
-  }
-})();
+/* ================= TRACKER (sessions / résultats / participations) ================= */
 
-// Écoute Firebase en temps réel : dès qu'une inscription change
-// (la tienne ou celle de quelqu'un d'autre), l'app se met à jour
-// instantanément, sans délai et sans vérification périodique.
+async function listSessions(){
+  const snap = await firebase.database().ref('tracker/sessions').once('value');
+  const val = snap.val() || {};
+  return Object.keys(val).map(id => ({ id, ...val[id] }));
+}
+async function saveSession(id, session){
+  await firebase.database().ref(`tracker/sessions/${id}`).set(session);
+}
+async function updateSession(id, patch){
+  const ref = firebase.database().ref(`tracker/sessions/${id}`);
+  await ref.transaction(current => ({ ...(current || {}), ...patch }));
+}
+function newSessionId(){ return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// Transforme automatiquement chaque soirée Monday Poker passée en session
+// de suivi, pré-remplie avec la liste des présents. Une fois qu'une session
+// existe pour une date (même annulée), elle n'est plus jamais recréée —
+// pas de résurrection après une suppression volontaire.
+async function syncPollSessions(){
+  try{
+    const pollDates = await listPollDates();
+    const existingIds = new Set(trackerSessions.map(s => s.id));
+    const now = new Date();
+
+    for(const dateKey of pollDates){
+      if(existingIds.has(dateKey)) continue;
+      const [y,m,d] = dateKey.split('-').map(Number);
+      const occurred = new Date(y, m-1, d, 22, 0, 0);
+      if(occurred > now) continue; // la soirée n'a pas encore eu lieu
+
+      const data = await getPollData(dateKey);
+      if(data.present.length === 0) continue; // rien à suivre, personne d'inscrit
+
+      await saveSession(dateKey, {
+        date: dateKey,
+        name: '',
+        status: 'ongoing',
+        buyIn: 0,
+        createdAt: Date.now(),
+        fromInscriptions: true,
+        players: data.present.map(p => ({ name: p.name, position: null, bounty: null, gains: null }))
+      });
+      existingIds.add(dateKey);
+    }
+  }catch(e){ console.error('Synchronisation des sessions échouée :', e); }
+}
+
+function completedSessions(year){
+  return trackerSessions.filter(s => s.status === 'completed' && (!year || year === 'all' || s.date.slice(0,4) === year));
+}
+function availableYears(){
+  const years = new Set(trackerSessions.filter(s => s.status === 'completed').map(s => s.date.slice(0,4)));
+  return Array.from(years).sort((a,b) => b.localeCompare(a));
+}
+
+function playerStats(year){
+  const stats = {};
+  for(const s of completedSessions(year)){
+    const buyIn = Number(s.buyIn) || 0;
+    for(const p of (s.players || [])){
+      if(p.position == null || p.gains == null) continue;
+      if(!stats[p.name]) stats[p.name] = { name:p.name, participations:0, gains:0, bounty:0, buyInPaid:0, net:0, itm:0, wins:0, second:0, third:0, top3:0, best:-Infinity, bestPos:Infinity, history:[] };
+      const st = stats[p.name];
+      const gains = Number(p.gains) || 0;
+      const bounty = Number(p.bounty) || 0;
+      st.participations++;
+      st.gains += gains;
+      st.bounty += bounty;
+      st.buyInPaid += buyIn;
+      st.net += gains + bounty - buyIn;
+      if(gains > 0) st.itm++;
+      if(p.position === 1) st.wins++;
+      if(p.position === 2) st.second++;
+      if(p.position === 3) st.third++;
+      if(p.position <= 3) st.top3++;
+      if(gains > st.best) st.best = gains;
+      if(p.position < st.bestPos) st.bestPos = p.position;
+      st.history.push({ date:s.date, name:s.name, position:p.position, gains, bounty, buyIn, net: gains+bounty-buyIn });
+    }
+  }
+  Object.values(stats).forEach(st => st.history.sort((a,b) => b.date.localeCompare(a.date)));
+  return stats;
+}
+function allPlayerNames(){
+  const set = new Set();
+  trackerSessions.forEach(s => (s.players || []).forEach(p => set.add(p.name)));
+  return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+function fmtChf(n){ return `CHF ${Number(n).toLocaleString('fr-CH')}`; }
+function fmtDate(d){
+  const [y,m,dd] = d.split('-').map(Number);
+  return new Date(y,m-1,dd).toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'});
+}
+function ordinal(n){ return n === 1 ? '1er' : `${n}e`; }
+
+function renderSessionsList(){
+  const view = document.getElementById('view');
+  const sorted = [...trackerSessions].sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
+  let rows = sorted.map(s => {
+    const count = (s.players||[]).length;
+    const statusLabel = {upcoming:'À venir', ongoing:'En cours', completed:'Terminée', cancelled:'Annulée'}[s.status] || s.status;
+    const label = s.name || (s.fromInscriptions ? 'Soirée Monday Poker' : 'Session');
+    return `<div class="session-row" data-open="${s.id}">
+      <div class="left"><div class="date">${fmtDate(s.date)}</div><div class="meta">${escapeHtml(label)} · ${count} joueur${count>1?'s':''}</div></div>
+      <span class="status-pill ${s.status}">${statusLabel}</span>
+    </div>`;
+  }).join('');
+  if(sorted.length === 0){
+    rows = `<div class="empty-state">Aucune session pour l'instant.<br>Les soirées Monday Poker passées apparaîtront ici automatiquement, ou crée-en une toi-même.</div>`;
+  }
+  view.innerHTML = `<div class="fab-row"><button class="btn btn-brass" id="newSessionBtn">+ Nouvelle session</button></div>${rows}`;
+  document.getElementById('newSessionBtn').addEventListener('click', openCreateSheet);
+  view.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => { openSessionId = el.dataset.open; render(); }));
+}
+
+async function openCreateSheet(){
+  const known = allPlayerNames();
+  const pollDates = (await listPollDates()).sort().reverse();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop';
+  const today = new Date().toISOString().slice(0,10);
+  backdrop.innerHTML = `
+    <div class="sheet">
+      <h2>Nouvelle session</h2>
+      <div class="field">
+        <label>Importer les présents d'une soirée Monday Poker (facultatif)</label>
+        <div class="add-player-row">
+          <select id="sImportSelect">
+            <option value="">— choisir une soirée —</option>
+            ${pollDates.map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('')}
+          </select>
+          <button class="btn btn-outline" id="sImportBtn">Importer</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="sDate" value="${today}">
+      </div>
+      <div class="field">
+        <label>Nom (facultatif)</label>
+        <input type="text" id="sName" placeholder="ex. Session #21">
+      </div>
+      <div class="field">
+        <label>Buy-in (CHF)</label>
+        <input type="number" min="0" step="1" id="sBuyIn" placeholder="ex. 50">
+      </div>
+      <div class="field">
+        <label>Participants</label>
+        <div class="add-player-row">
+          <input type="text" id="sPlayerInput" placeholder="Prénom" list="knownPlayers">
+          <button class="btn btn-outline" id="sAddPlayer">Ajouter</button>
+        </div>
+        <datalist id="knownPlayers">${known.map(n=>`<option value="${escapeHtml(n)}">`).join('')}</datalist>
+        <div class="chip-row" id="sChips"></div>
+      </div>
+      <div class="session-actions">
+        <button class="btn btn-outline" id="sCancel" style="flex:1;">Annuler</button>
+        <button class="btn btn-brass" id="sCreate" style="flex:1;" disabled>Créer</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  let chosen = [];
+  const chipsEl = backdrop.querySelector('#sChips');
+  const createBtn = backdrop.querySelector('#sCreate');
+  function renderChips(){
+    chipsEl.innerHTML = chosen.map(n => `<div class="chip">${escapeHtml(n)}<button data-rm="${escapeHtml(n)}">✕</button></div>`).join('');
+    chipsEl.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
+      chosen = chosen.filter(n => n !== b.dataset.rm);
+      renderChips();
+    }));
+    createBtn.disabled = chosen.length < 2;
+  }
+  function addPlayer(name){
+    const n = (name !== undefined ? name : backdrop.querySelector('#sPlayerInput').value).trim();
+    if(n && !chosen.some(x => x.toLowerCase() === n.toLowerCase())){ chosen.push(n); renderChips(); }
+  }
+  backdrop.querySelector('#sAddPlayer').addEventListener('click', () => {
+    addPlayer();
+    const input = backdrop.querySelector('#sPlayerInput');
+    input.value = ''; input.focus();
+  });
+  backdrop.querySelector('#sPlayerInput').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); addPlayer(); e.target.value=''; }
+  });
+  backdrop.querySelector('#sImportBtn').addEventListener('click', async () => {
+    const dateKey = backdrop.querySelector('#sImportSelect').value;
+    if(!dateKey) return;
+    const data = await getPollData(dateKey);
+    data.present.forEach(p => addPlayer(p.name));
+    backdrop.querySelector('#sDate').value = dateKey;
+    if(!backdrop.querySelector('#sName').value){
+      backdrop.querySelector('#sName').value = '';
+    }
+  });
+  backdrop.querySelector('#sCancel').addEventListener('click', () => backdrop.remove());
+  backdrop.addEventListener('click', (e) => { if(e.target === backdrop) backdrop.remove(); });
+
+  createBtn.addEventListener('click', async () => {
+    const date = backdrop.querySelector('#sDate').value;
+    const name = backdrop.querySelector('#sName').value.trim();
+    const buyInRaw = backdrop.querySelector('#sBuyIn').value;
+    const buyIn = buyInRaw === '' ? 0 : Number(buyInRaw);
+    if(!date || chosen.length < 2) return;
+    const id = newSessionId();
+    const status = date <= new Date().toISOString().slice(0,10) ? 'ongoing' : 'upcoming';
+    await saveSession(id, {
+      date, name, status, buyIn, createdAt: Date.now(),
+      players: chosen.map(n => ({ name:n, position:null, bounty:null, gains:null }))
+    });
+    backdrop.remove();
+    trackerSessions = await listSessions();
+    openSessionId = id;
+    render();
+  });
+
+  renderChips();
+}
+
+async function renderSessionDetail(id){
+  const view = document.getElementById('view');
+  const s = trackerSessions.find(x => x.id === id);
+  if(!s){ openSessionId = null; render(); return; }
+
+  const players = s.players || [];
+  const allFilled = players.every(p => p.position !== null && p.position !== '' && p.gains !== null && p.gains !== '');
+  const statusLabel = {upcoming:'À venir', ongoing:'En cours', completed:'Terminée', cancelled:'Annulée'}[s.status] || s.status;
+
+  let podiumHtml = '';
+  if(s.status === 'completed'){
+    const top3 = [...players].filter(p=>p.position).sort((a,b)=>a.position-b.position).slice(0,3);
+    const byRank = {1:null,2:null,3:null};
+    top3.forEach(p => byRank[p.position] = p);
+    const medal = {1:'🥇',2:'🥈',3:'🥉'};
+    podiumHtml = `<div class="podium">${[2,1,3].map(rank => {
+      const p = byRank[rank];
+      if(!p) return '<div class="spot" style="visibility:hidden;">.</div>';
+      return `<div class="spot p${rank}"><div class="medal">${medal[rank]}</div><div class="pname">${escapeHtml(p.name)}</div><div class="pgain">${fmtChf(p.gains)}</div><div class="block">${rank}</div></div>`;
+    }).join('')}</div>`;
+  }
+
+  const buyIn = s.buyIn || 0;
+  const netTotal = players.reduce((sum,p) => sum + (Number(p.gains)||0) + (Number(p.bounty)||0) - buyIn, 0);
+  const defaultLabel = s.fromInscriptions ? 'Soirée Monday Poker' : 'Session';
+
+  view.innerHTML = `
+    <button class="back-link" id="backBtn">← Sessions</button>
+    <div class="detail-card">
+      <h2>${escapeHtml(s.name || defaultLabel)}</h2>
+      <div class="sub">${fmtDate(s.date)} · <span class="status-pill ${s.status}" style="margin-left:4px;">${statusLabel}</span>${s.fromInscriptions ? ' · <span style="color:var(--text-muted);">importée des inscriptions</span>' : ''}</div>
+      ${podiumHtml}
+
+      <div class="field">
+        <label>Buy-in (CHF, par joueur)</label>
+        <input type="number" min="0" step="1" id="buyInInput" value="${buyIn || ''}" placeholder="ex. 50">
+      </div>
+
+      <div class="field">
+        <label>Saisie rapide (texte libre)</label>
+        <textarea id="quickFill" rows="3" placeholder="Un joueur par ligne : Thomas 1 20 450" style="width:100%; font-family:inherit; font-size:14px; padding:10px 12px; border:1.5px solid rgba(28,26,20,0.15); border-radius:9px; background:#fff; color:var(--ink); resize:vertical;"></textarea>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+          <small class="hint" style="margin:0;">Nom, rang, bounty, gains ITM — séparés par espace ou virgule</small>
+          <button class="btn btn-outline" id="quickFillBtn" style="padding:8px 14px; font-size:13px;">Remplir</button>
+        </div>
+        <div class="notice" id="quickFillNotice"></div>
+      </div>
+
+      <div class="col-labels" style="grid-template-columns:1fr 50px 60px 70px;"><span>Joueur</span><span>Rang</span><span>Bounty</span><span>Gains</span></div>
+      ${players.map((p,i) => `
+        <div class="result-row" data-idx="${i}" style="grid-template-columns:1fr 50px 60px 70px;">
+          <div class="pname">${escapeHtml(p.name)}</div>
+          <input type="number" min="1" step="1" class="pos-input" value="${p.position ?? ''}" placeholder="–">
+          <input type="number" min="0" step="1" class="bounty-input" value="${p.bounty ?? ''}" placeholder="–">
+          <input type="number" step="1" class="gain-input" value="${p.gains ?? ''}" placeholder="–">
+        </div>`).join('')}
+      <small class="hint" style="margin-top:14px;">Bounty = primes de knockout encaissées. Gains = paiement de classement (ITM). Modifier un résultat recalcule tout automatiquement.</small>
+      ${buyIn ? `<div style="text-align:right; font-family:'Fraunces',serif; font-weight:600; font-size:16px; margin-bottom:8px;">Net session : ${fmtChf(netTotal)}</div>` : ''}
+      <div class="session-actions">
+        ${s.status !== 'cancelled' ? `<button class="btn btn-outline" id="cancelBtn" style="flex:1;">Annuler (pas assez de joueurs)</button>` : ''}
+        ${s.status !== 'completed' && s.status !== 'cancelled' ? `<button class="btn btn-brass" id="closeBtn" style="flex:1;" ${allFilled ? '' : 'disabled'}>Clôturer</button>` : ''}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('backBtn').addEventListener('click', () => { openSessionId = null; render(); });
+
+  let buyInTimer = null;
+  document.getElementById('buyInInput').addEventListener('input', (e) => {
+    clearTimeout(buyInTimer);
+    buyInTimer = setTimeout(async () => {
+      const val = e.target.value === '' ? 0 : Number(e.target.value);
+      await updateSession(id, { buyIn: val });
+      trackerSessions = await listSessions();
+      openSessionId = id;
+      render();
+    }, 600);
+  });
+
+  document.getElementById('quickFillBtn').addEventListener('click', async () => {
+    const raw = document.getElementById('quickFill').value;
+    const notice = document.getElementById('quickFillNotice');
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    const updated = [...players];
+    const unmatched = [];
+
+    for(const line of lines){
+      const tokens = line.split(/[,\t]+|\s+/).map(t => t.trim()).filter(Boolean);
+      if(tokens.length < 3){ unmatched.push(line); continue; }
+
+      let name, position, bounty, gains;
+      if(tokens.length >= 4 && !isNaN(Number(tokens[tokens.length-1])) && !isNaN(Number(tokens[tokens.length-2])) && !isNaN(Number(tokens[tokens.length-3]))){
+        gains = Number(tokens[tokens.length - 1]);
+        bounty = Number(tokens[tokens.length - 2]);
+        position = Number(tokens[tokens.length - 3]);
+        name = tokens.slice(0, tokens.length - 3).join(' ');
+      } else {
+        gains = Number(tokens[tokens.length - 1]);
+        position = Number(tokens[tokens.length - 2]);
+        bounty = null;
+        name = tokens.slice(0, tokens.length - 2).join(' ');
+      }
+      if(!name || isNaN(gains) || isNaN(position)){ unmatched.push(line); continue; }
+
+      const idx = updated.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+      if(idx === -1){ unmatched.push(line); continue; }
+      updated[idx] = { ...updated[idx], position, bounty, gains };
+    }
+
+    await updateSession(id, { players: updated });
+    trackerSessions = await listSessions();
+
+    if(unmatched.length > 0){
+      notice.textContent = `Non reconnu (vérifie l'orthographe des noms) : ${unmatched.join(' · ')}`;
+      notice.classList.add('show');
+      setTimeout(() => { openSessionId = id; render(); }, 2600);
+    } else {
+      openSessionId = id;
+      render();
+    }
+  });
+
+  let saveTimer = null;
+  view.querySelectorAll('.result-row').forEach(row => {
+    const idx = Number(row.dataset.idx);
+    const posInput = row.querySelector('.pos-input');
+    const bountyInput = row.querySelector('.bounty-input');
+    const gainInput = row.querySelector('.gain-input');
+    function scheduleSave(){
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        const updated = [...players];
+        updated[idx] = {
+          ...updated[idx],
+          position: posInput.value === '' ? null : Number(posInput.value),
+          bounty: bountyInput.value === '' ? null : Number(bountyInput.value),
+          gains: gainInput.value === '' ? null : Number(gainInput.value)
+        };
+        await updateSession(id, { players: updated });
+        trackerSessions = await listSessions();
+        openSessionId = id;
+        render();
+      }, 500);
+    }
+    posInput.addEventListener('input', scheduleSave);
+    gainInput.addEventListener('input', scheduleSave);
+  });
+
+  const cancelBtn = document.getElementById('cancelBtn');
+  if(cancelBtn) cancelBtn.addEventListener('click', async () => {
+    await updateSession(id, { status: 'cancelled' });
+    trackerSessions = await listSessions();
+    openSessionId = id;
+    render();
+  });
+  const closeBtn = document.getElementById('closeBtn');
+  if(closeBtn) closeBtn.addEventListener('click', async () => {
+    await updateSession(id, { status: 'completed' });
+    trackerSessions = await listSessions();
+    openSessionId = id;
+    render();
+  });
+}
+
+const SORT_OPTIONS = [
+  {key:'net', label:'Net'}, {key:'gains', label:'Gains'}, {key:'bounty', label:'Bounty'}, {key:'wins', label:'Victoires'}, {key:'top3', label:'Podiums'},
+  {key:'participations', label:'Participations'}, {key:'itmPct', label:'ITM %'}
+];
+function renderSortRow(){
+  return `<div class="sort-row">${SORT_OPTIONS.map(o => `<button class="sort-chip ${resultsSort===o.key?'active':''}" data-sort="${o.key}">${o.label}</button>`).join('')}</div>`;
+}
+function attachSortHandlers(){
+  document.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => { resultsSort = b.dataset.sort; render(); }));
+}
+
+function renderYearRow(){
+  const years = availableYears();
+  if(years.length === 0) return '';
+  const options = ['all', ...years];
+  return `<div class="sort-row" style="margin-bottom:10px;">${options.map(y =>
+    `<button class="sort-chip ${statsYear===y?'active':''}" data-year="${y}">${y==='all' ? 'Toutes les années' : y}</button>`
+  ).join('')}</div>`;
+}
+function attachYearHandlers(){
+  document.querySelectorAll('[data-year]').forEach(b => b.addEventListener('click', () => { statsYear = b.dataset.year; render(); }));
+}
+
+function renderResults(){
+  const view = document.getElementById('view');
+  const stats = Object.values(playerStats(statsYear)).map(st => ({ ...st, itmPct: st.participations ? (st.itm/st.participations*100) : 0 }));
+
+  if(stats.length === 0){
+    view.innerHTML = renderYearRow() + renderSortRow() + `<div class="empty-state">Aucune session terminée ${statsYear==='all' ? "pour l'instant" : `pour ${statsYear}`}.<br>Les classements apparaîtront après votre première session clôturée.</div>`;
+    attachYearHandlers();
+    attachSortHandlers();
+    return;
+  }
+
+  stats.sort((a,b) => b[resultsSort] - a[resultsSort]);
+  const top3 = stats.slice(0,3);
+  const medal = {0:'🥇',1:'🥈',2:'🥉'};
+
+  function metricLabel(p){
+    switch(resultsSort){
+      case 'net': return fmtChf(p.net);
+      case 'gains': return fmtChf(p.gains);
+      case 'bounty': return fmtChf(p.bounty);
+      case 'wins': return `${p.wins} victoire${p.wins>1?'s':''}`;
+      case 'top3': return `${p.top3} podium${p.top3>1?'s':''}`;
+      case 'participations': return `${p.participations} sess.`;
+      case 'itmPct': return `${p.itmPct.toFixed(0)}% ITM`;
+    }
+  }
+
+  const podiumHtml = `<div class="podium">${[1,0,2].map(i => {
+    const p = top3[i];
+    if(!p) return '<div class="spot" style="visibility:hidden;">.</div>';
+    const rank = i+1;
+    return `<div class="spot p${rank}" data-player="${escapeHtml(p.name)}"><div class="medal">${medal[i]}</div><div class="pname">${escapeHtml(p.name)}</div><div class="pgain">${metricLabel(p)}</div><div class="block">${rank}</div></div>`;
+  }).join('')}</div>`;
+
+  const rows = stats.map((p, i) => `
+    <div class="rank-row" data-player="${escapeHtml(p.name)}">
+      <div class="rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
+      <div class="rank-name">${escapeHtml(p.name)}</div>
+      <div><div class="rank-metric">${fmtChf(p.net)}</div><div class="rank-sub">${p.participations} sess. · ${p.itmPct.toFixed(0)}% ITM</div></div>
+    </div>`).join('');
+
+  view.innerHTML = renderYearRow() + renderSortRow() + podiumHtml + `<div class="rank-table">${rows}</div>`;
+  attachYearHandlers();
+  attachSortHandlers();
+  view.querySelectorAll('[data-player]').forEach(el => el.addEventListener('click', () => { openPlayerName = el.dataset.player; render(); }));
+}
+
+function renderParticipation(){
+  const view = document.getElementById('view');
+  const stats = Object.values(playerStats(statsYear)).map(st => ({ ...st, itmPct: st.participations ? (st.itm/st.participations*100) : 0 }));
+  if(stats.length === 0){
+    view.innerHTML = renderYearRow() + `<div class="empty-state">Aucune donnée ${statsYear==='all' ? "pour l'instant" : `pour ${statsYear}`}.</div>`;
+    attachYearHandlers();
+    return;
+  }
+  stats.sort((a,b) => b.participations - a.participations);
+  const rows = stats.map((p,i) => `
+    <div class="rank-row" data-player="${escapeHtml(p.name)}">
+      <div class="rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
+      <div class="rank-name">${escapeHtml(p.name)}</div>
+      <div><div class="rank-metric">${p.participations}</div><div class="rank-sub">${p.itmPct.toFixed(0)}% ITM (${p.itm}/${p.participations})</div></div>
+    </div>`).join('');
+  view.innerHTML = renderYearRow() + `<div class="rank-table">${rows}</div>`;
+  attachYearHandlers();
+  view.querySelectorAll('[data-player]').forEach(el => el.addEventListener('click', () => { openPlayerName = el.dataset.player; render(); }));
+}
+
+function renderPlayerDetail(name){
+  const view = document.getElementById('view');
+  const stats = playerStats(statsYear)[name];
+  if(!stats){
+    view.innerHTML = `<button class="back-link" id="backBtn">← Retour</button><div class="empty-state">Pas encore de session terminée pour ${escapeHtml(name)}${statsYear==='all' ? '' : ` en ${statsYear}`}.</div>`;
+    document.getElementById('backBtn').addEventListener('click', () => { openPlayerName = null; render(); });
+    return;
+  }
+  const itmPct = stats.participations ? (stats.itm/stats.participations*100) : 0;
+  view.innerHTML = `
+    <button class="back-link" id="backBtn">← Retour</button>
+    <div class="detail-card">
+      <h2>${escapeHtml(name)}</h2>
+      <div class="sub">${stats.participations} participation${stats.participations>1?'s':''} · ${statsYear==='all' ? 'toutes années' : statsYear}</div>
+      <div class="trophy-row">
+        <div class="t"><span class="n">🏆 ${stats.wins}</span><span class="l">Victoires</span></div>
+        <div class="t"><span class="n">🥈 ${stats.second}</span><span class="l">2e places</span></div>
+        <div class="t"><span class="n">🥉 ${stats.third}</span><span class="l">3e places</span></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="n">${fmtChf(stats.net)}</div><div class="l">Profit net (après buy-in)</div></div>
+        <div class="stat-box"><div class="n">${itmPct.toFixed(0)}%</div><div class="l">ITM (${stats.itm}/${stats.participations})</div></div>
+        <div class="stat-box"><div class="n">${fmtChf(stats.gains)}</div><div class="l">Gains ITM cumulés</div></div>
+        <div class="stat-box"><div class="n">${fmtChf(stats.bounty)}</div><div class="l">Bounty cumulés</div></div>
+        <div class="stat-box"><div class="n">${fmtChf(stats.buyInPaid)}</div><div class="l">Buy-in cumulés</div></div>
+        <div class="stat-box"><div class="n">${ordinal(stats.bestPos)}</div><div class="l">Meilleur classement</div></div>
+      </div>
+      <small class="hint">Historique des sessions</small>
+      ${stats.history.map(h => `<div class="history-row"><div class="l">${escapeHtml(h.name || 'Session')}<span class="d">${fmtDate(h.date)}</span></div><div class="r">${ordinal(h.position)} · ${fmtChf(h.net)} net</div></div>`).join('')}
+    </div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', () => { openPlayerName = null; render(); });
+}
+
+/* ================= dispatcher & nav ================= */
+
+let renderInProgress = false;
+let renderAgainRequested = false;
+
+async function render(){
+  if(renderInProgress){ renderAgainRequested = true; return; }
+  renderInProgress = true;
+  try{
+    await renderInner();
+  } catch(e){
+    const el = document.getElementById('view');
+    if(el) el.innerHTML = `<div class="empty-state">Erreur :<br><b>${escapeHtml(e && e.message ? e.message : String(e))}</b></div>`;
+    console.error('Erreur render :', e);
+  } finally {
+    renderInProgress = false;
+    if(renderAgainRequested){ renderAgainRequested = false; render(); }
+  }
+}
+
+async function renderInner(){
+  document.querySelectorAll('nav.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === currentTab));
+
+  const showInscriptionsChrome = currentTab === 'inscriptions' && !openSessionId && !openPlayerName;
+  document.getElementById('inscriptionsIntro').style.display = showInscriptionsChrome ? 'block' : 'none';
+  document.getElementById('nameBarWrap').style.display = showInscriptionsChrome ? 'flex' : 'none';
+
+  if(openPlayerName){ renderPlayerDetail(openPlayerName); return; }
+  if(openSessionId){ trackerSessions = await listSessions(); await renderSessionDetail(openSessionId); return; }
+
+  if(currentTab === 'inscriptions'){ await renderInscriptions(); return; }
+  trackerSessions = await listSessions();
+  await syncPollSessions();
+  trackerSessions = await listSessions();
+  if(currentTab === 'sessions') renderSessionsList();
+  else if(currentTab === 'results') renderResults();
+  else renderParticipation();
+}
+
+document.querySelectorAll('nav.tabbar button').forEach(b => {
+  b.addEventListener('click', () => {
+    currentTab = b.dataset.tab;
+    openSessionId = null;
+    openPlayerName = null;
+    render();
+  });
+});
+
+/* ================= temps réel & init ================= */
+
 let liveRef = null;
 let firstSnapshot = true;
-
 function startListening(){
   if(liveRef) return;
   try{
     liveRef = firebase.database().ref();
     liveRef.on('value', () => {
-      if(firstSnapshot){ firstSnapshot = false; return; } // évite un doublon avec le rendu initial
-      renderAll();
+      if(firstSnapshot){ firstSnapshot = false; return; }
+      render();
     });
-  }catch(e){
-    console.error('Écoute temps réel indisponible :', e);
-  }
+  }catch(e){ console.error('Écoute temps réel indisponible :', e); }
 }
-function stopListening(){
-  if(liveRef){ liveRef.off(); liveRef = null; }
-}
+function stopListening(){ if(liveRef){ liveRef.off(); liveRef = null; } }
 
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible'){
-    renderAll();
+    render();
     firstSnapshot = true;
     startListening();
   } else {
@@ -785,7 +1381,18 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-startListening();
+(async function init(){
+  try{
+    await initName();
+    await migrateOldDataIfNeeded();
+    await render();
+    startListening();
+  }catch(e){
+    const el = document.getElementById('view');
+    if(el) el.innerHTML = `<div class="empty-state">Erreur au démarrage :<br><b>${(e && e.message) ? e.message : String(e)}</b></div>`;
+    console.error('Erreur au démarrage :', e);
+  }
+})();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
