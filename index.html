@@ -650,22 +650,54 @@ function numberBadgeHtml(n){
   return `<div class="avatar avatar-number">${n}</div>`;
 }
 
+function renderNightCards(container, dates, dataList){
+  container.innerHTML = '';
+  dates.forEach((dateKey, idx) => {
+    const [y,m,d] = dateKey.split('-').map(Number);
+    const date = new Date(y, m-1, d, 20, 0, 0);
+    container.appendChild(buildNightCard(dateKey, date, dataList[idx]));
+  });
+}
+function loadCachedNights(){
+  try{
+    const raw = localStorage.getItem('cached-nights-data');
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || !Array.isArray(parsed.dates) || !Array.isArray(parsed.dataList)) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function saveCachedNights(dates, dataList){
+  try{ localStorage.setItem('cached-nights-data', JSON.stringify({dates, dataList})); }catch(e){}
+}
+
 async function renderInscriptions(){
   const view = document.getElementById('view');
-  view.innerHTML = `<div id="nights"><div class="empty-state">Chargement des soirées…</div></div><div class="footer-note" id="footerNote"></div>`;
-
+  view.innerHTML = `<div id="nights"></div><div class="footer-note" id="footerNote"></div>`;
   const container = document.getElementById('nights');
   const footer = document.getElementById('footerNote');
+
+  // Affiche immédiatement les dernières données connues (cache local) pendant
+  // que les données à jour se chargent en arrière-plan — évite l'écran de
+  // chargement à chaque ouverture, surtout perceptible en mode app (démarrage
+  // à froid à chaque fois, pas de processus en arrière-plan).
+  const cached = loadCachedNights();
+  if(cached && cached.dates.length > 0){
+    renderNightCards(container, cached.dates, cached.dataList);
+    footer.textContent = `Mise à jour en cours…`;
+  } else {
+    container.innerHTML = `<div class="empty-state">Chargement des soirées…</div>`;
+  }
 
   let index;
   try{
     index = await ensurePollsExist();
   }catch(e){
-    container.innerHTML = `<div class="empty-state">Erreur technique :<br>${escapeHtml(String(e && e.message ? e.message : e))}</div>`;
+    if(!cached){ container.innerHTML = `<div class="empty-state">Erreur technique :<br>${escapeHtml(String(e && e.message ? e.message : e))}</div>`; }
     return;
   }
   if(!Array.isArray(index)){
-    container.innerHTML = `<div class="empty-state">Diagnostic : liste invalide.</div>`;
+    if(!cached){ container.innerHTML = `<div class="empty-state">Diagnostic : liste invalide.</div>`; }
     return;
   }
 
@@ -680,20 +712,17 @@ async function renderInscriptions(){
 
   if(upcoming.length === 0){
     container.innerHTML = `<div class="empty-state">Aucune soirée à venir pour le moment.</div>`;
+    saveCachedNights([], []);
     return;
   }
 
   // Récupère les données de toutes les soirées en parallèle (au lieu d'une par
-  // une) pour réduire nettement le temps de chargement, surtout en mode app.
+  // une) pour réduire nettement le temps de chargement.
   const dataList = await Promise.all(upcoming.map(dateKey => getPollData(dateKey)));
 
-  container.innerHTML = '';
-  upcoming.forEach((dateKey, idx) => {
-    const [y,m,d] = dateKey.split('-').map(Number);
-    const date = new Date(y, m-1, d, 20, 0, 0);
-    container.appendChild(buildNightCard(dateKey, date, dataList[idx]));
-  });
+  renderNightCards(container, upcoming, dataList);
   footer.textContent = `Les soirées sont générées automatiquement pour le mois en cours et le mois suivant.`;
+  saveCachedNights(upcoming, dataList);
 }
 
 function buildNightCard(dateKey, date, data){
