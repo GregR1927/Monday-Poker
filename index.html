@@ -234,6 +234,22 @@
   }
   .notice.show{display:block;}
 
+  .toggle-list{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:none;
+    border:none;
+    border-top:1px solid var(--line);
+    padding:12px 0 2px;
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--felt);
+    cursor:pointer;
+  }
+  .lists-wrap{margin-top:4px;}
+
   .list-section{margin-top:14px;}
   .list-section h3{
     font-size:11.5px;
@@ -655,7 +671,7 @@ function renderNightCards(container, dates, dataList){
   dates.forEach((dateKey, idx) => {
     const [y,m,d] = dateKey.split('-').map(Number);
     const date = new Date(y, m-1, d, 20, 0, 0);
-    container.appendChild(buildNightCard(dateKey, date, dataList[idx]));
+    container.appendChild(buildNightCard(dateKey, date, dataList[idx], idx === 0));
   });
 }
 function loadCachedNights(){
@@ -725,7 +741,7 @@ async function renderInscriptions(){
   saveCachedNights(upcoming, dataList);
 }
 
-function buildNightCard(dateKey, date, data){
+function buildNightCard(dateKey, date, data, defaultExpanded){
   const card = document.createElement('div');
   card.className = 'night-card';
   const isFull = data.present.length >= MAX_PRESENT;
@@ -734,6 +750,8 @@ function buildNightCard(dateKey, date, data){
   const seatChips = Array.from({length: MAX_PRESENT}, (_, i) =>
     `<div class="seat-chip ${i < data.present.length ? 'filled' : 'empty'}"></div>`
   ).join('');
+  const totalPeople = data.present.length + data.absent.length;
+  const expanded = !!defaultExpanded;
 
   card.innerHTML = `
     <div class="suits-row">${SUITS}</div>
@@ -745,11 +763,23 @@ function buildNightCard(dateKey, date, data){
       <button class="vote-btn absent ${myVote==='absent'?'active-vote':''}" data-action="absent">Absent</button>
     </div>
     <div class="notice" data-notice></div>
-    ${listSection('Présents', data.present, true)}
-    ${listSection('Absents', data.absent, false)}
+    <button class="toggle-list" data-toggle>${expanded ? 'Masquer la liste ▴' : `Voir qui est inscrit (${totalPeople}) ▾`}</button>
+    <div class="lists-wrap" data-lists style="display:${expanded ? 'block' : 'none'};">
+      ${listSection('Présents', data.present, true)}
+      ${listSection('Absents', data.absent, false)}
+    </div>
   `;
   card.querySelectorAll('.vote-btn').forEach(btn => btn.addEventListener('click', () => handleVote(dateKey, btn.dataset.action, card)));
   card.querySelectorAll('[data-unreg]').forEach(btn => btn.addEventListener('click', () => handleUnregister(dateKey, btn.dataset.unreg, card)));
+
+  const toggleBtn = card.querySelector('[data-toggle]');
+  const listsWrap = card.querySelector('[data-lists]');
+  toggleBtn.addEventListener('click', () => {
+    const nowOpen = listsWrap.style.display === 'none';
+    listsWrap.style.display = nowOpen ? 'block' : 'none';
+    toggleBtn.textContent = nowOpen ? 'Masquer la liste ▴' : `Voir qui est inscrit (${totalPeople}) ▾`;
+  });
+
   return card;
 }
 
