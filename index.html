@@ -750,8 +750,13 @@ function buildNightCard(dateKey, date, data, defaultExpanded){
   const seatChips = Array.from({length: MAX_PRESENT}, (_, i) =>
     `<div class="seat-chip ${i < data.present.length ? 'filled' : 'empty'}"></div>`
   ).join('');
-  const totalPeople = data.present.length + data.absent.length;
   const expanded = !!defaultExpanded;
+  const collapsedLabel = () => {
+    const parts = [];
+    if(data.present.length > 0) parts.push(`${data.present.length} présent${data.present.length>1?'s':''}`);
+    if(data.absent.length > 0) parts.push(`${data.absent.length} absent${data.absent.length>1?'s':''}`);
+    return `Voir la liste${parts.length ? ' (' + parts.join(' · ') + ')' : ''} ▾`;
+  };
 
   card.innerHTML = `
     <div class="suits-row">${SUITS}</div>
@@ -763,7 +768,7 @@ function buildNightCard(dateKey, date, data, defaultExpanded){
       <button class="vote-btn absent ${myVote==='absent'?'active-vote':''}" data-action="absent">Absent</button>
     </div>
     <div class="notice" data-notice></div>
-    <button class="toggle-list" data-toggle>${expanded ? 'Masquer la liste ▴' : `Voir qui est inscrit (${totalPeople}) ▾`}</button>
+    <button class="toggle-list" data-toggle>${expanded ? 'Masquer la liste ▴' : collapsedLabel()}</button>
     <div class="lists-wrap" data-lists style="display:${expanded ? 'block' : 'none'};">
       ${listSection('Présents', data.present, true)}
       ${listSection('Absents', data.absent, false)}
@@ -777,7 +782,7 @@ function buildNightCard(dateKey, date, data, defaultExpanded){
   toggleBtn.addEventListener('click', () => {
     const nowOpen = listsWrap.style.display === 'none';
     listsWrap.style.display = nowOpen ? 'block' : 'none';
-    toggleBtn.textContent = nowOpen ? 'Masquer la liste ▴' : `Voir qui est inscrit (${totalPeople}) ▾`;
+    toggleBtn.textContent = nowOpen ? 'Masquer la liste ▴' : collapsedLabel();
   });
 
   return card;
