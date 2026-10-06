@@ -72,7 +72,7 @@
   }
 
   .name-bar{
-    background:var(--felt);
+    background:linear-gradient(180deg, var(--felt-light), var(--felt));
     border:1px solid rgba(230,220,192,0.18);
     border-radius:14px;
     padding:14px 16px;
@@ -80,6 +80,7 @@
     align-items:center;
     gap:10px;
     margin:0 0 22px;
+    box-shadow:0 1px 0 rgba(255,255,255,0.06) inset, 0 6px 16px rgba(0,0,0,0.25);
   }
   .name-bar label{
     color:var(--cream-dim);
@@ -108,14 +109,19 @@
   }
   .name-bar .status.show{opacity:1;}
 
+  @keyframes cardIn{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+  }
   .night-card{
     background:var(--cream);
     border-radius:16px;
     padding:22px 20px 20px;
     margin-bottom:20px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.28);
+    box-shadow:0 2px 6px rgba(0,0,0,0.18), 0 14px 34px rgba(0,0,0,0.28);
     position:relative;
     overflow:hidden;
+    animation:cardIn .35s ease both;
   }
   .night-card::before{
     content:"";
@@ -180,6 +186,7 @@
     padding:4px;
     gap:4px;
     margin-bottom:16px;
+    box-shadow:0 1px 3px rgba(28,26,20,0.18) inset;
   }
   .vote-btn{
     flex:1;
@@ -333,13 +340,17 @@
   nav.tabbar{
     position:fixed;
     bottom:0; left:0; right:0;
-    background:var(--ink);
-    border-top:1px solid rgba(243,236,217,0.1);
+    background:rgba(20,17,15,0.82);
+    backdrop-filter:blur(16px) saturate(140%);
+    -webkit-backdrop-filter:blur(16px) saturate(140%);
+    border-top:1px solid rgba(243,236,217,0.12);
+    box-shadow:0 -8px 24px rgba(0,0,0,0.35);
     display:flex;
     padding-bottom:env(safe-area-inset-bottom);
     z-index:20;
   }
   nav.tabbar button{
+    position:relative;
     flex:1;
     background:none;
     border:none;
@@ -347,15 +358,25 @@
     font-family:inherit;
     font-size:11px;
     font-weight:600;
-    padding:11px 4px 9px;
+    padding:12px 4px 9px;
     display:flex;
     flex-direction:column;
     align-items:center;
     gap:4px;
     cursor:pointer;
+    transition:color .2s;
   }
-  nav.tabbar button .ico{font-size:19px; line-height:1;}
+  nav.tabbar button .ico{font-size:19px; line-height:1; transition:transform .2s;}
   nav.tabbar button.active{color:var(--gold-light);}
+  nav.tabbar button.active .ico{transform:translateY(-1px) scale(1.08);}
+  nav.tabbar button.active::before{
+    content:"";
+    position:absolute;
+    top:2px; left:50%; transform:translateX(-50%);
+    width:18px; height:3px; border-radius:3px;
+    background:var(--gold-light);
+    box-shadow:0 0 8px rgba(224,185,79,0.7);
+  }
 
   /* ---------- generic buttons ---------- */
   .btn{
@@ -366,9 +387,15 @@
     border-radius:10px;
     padding:11px 16px;
     cursor:pointer;
+    transition:transform .12s, box-shadow .12s, filter .12s;
   }
-  .btn-brass{background:var(--brass); color:#fff;}
+  .btn-brass{
+    background:linear-gradient(180deg, var(--brass-light), var(--brass));
+    color:#3a2a0d;
+    box-shadow:0 1px 1px rgba(255,255,255,0.3) inset, 0 4px 10px rgba(184,134,59,0.4);
+  }
   .btn-outline{background:transparent; color:var(--cream); border:1.5px solid rgba(230,220,192,0.3);}
+  .btn:active{transform:scale(0.97); filter:brightness(0.96);}
   .btn:disabled{opacity:0.35; cursor:default;}
   .fab-row{display:flex; justify-content:flex-end; margin:6px 0 18px;}
 
@@ -384,7 +411,11 @@
     align-items:center;
     justify-content:space-between;
     gap:12px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.12), 0 8px 20px rgba(0,0,0,0.18);
+    animation:cardIn .35s ease both;
+    transition:transform .12s, box-shadow .12s;
   }
+  .session-row:active{transform:scale(0.985); box-shadow:0 1px 3px rgba(0,0,0,0.15);}
   .session-row .left{min-width:0;}
   .session-row .date{font-family:'Fraunces', serif; font-weight:600; font-size:16px;}
   .session-row .meta{font-size:12.5px; color:var(--text-muted); margin-top:2px;}
@@ -396,9 +427,12 @@
 
   /* ---------- sheet ---------- */
   .sheet-backdrop{position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:30; display:flex; align-items:flex-end;}
+  @keyframes sheetUp{ from{transform:translateY(24px); opacity:0.4;} to{transform:translateY(0); opacity:1;} }
   .sheet{
     background:var(--cream); color:var(--ink); width:100%; max-height:88vh; overflow-y:auto;
     border-radius:20px 20px 0 0; padding:22px 20px calc(24px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 40px rgba(0,0,0,0.45);
+    animation:sheetUp .28s cubic-bezier(.2,.8,.3,1) both;
   }
   .sheet h2{font-family:'Fraunces', serif; font-weight:600; font-size:21px; margin:0 0 18px;}
   .field{margin-bottom:16px;}
@@ -422,7 +456,11 @@
     color:var(--gold-light); font-weight:600; font-size:13.5px;
     background:none; border:none; cursor:pointer; padding:0; margin-bottom:16px; font-family:inherit;
   }
-  .detail-card{background:var(--cream); color:var(--ink); border-radius:16px; padding:20px; margin-bottom:16px;}
+  .detail-card{
+    background:var(--cream); color:var(--ink); border-radius:16px; padding:20px; margin-bottom:16px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15), 0 14px 32px rgba(0,0,0,0.25);
+    animation:cardIn .35s ease both;
+  }
   .detail-card h2{font-family:'Fraunces', serif; font-weight:600; font-size:20px; margin:0 0 3px;}
   .detail-card .sub{font-size:13px; color:var(--text-muted); margin-bottom:18px;}
 
@@ -459,11 +497,21 @@
   .sort-chip{
     flex-shrink:0; background:var(--felt); color:var(--cream-dim); border:1px solid rgba(243,236,217,0.15);
     border-radius:20px; padding:7px 14px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer;
+    transition:transform .12s, box-shadow .12s, background .15s;
   }
-  .sort-chip.active{background:var(--brass); color:#fff; border-color:var(--brass);}
+  .sort-chip:active{transform:scale(0.95);}
+  .sort-chip.active{
+    background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#3a2a0d; border-color:var(--brass);
+    box-shadow:0 3px 8px rgba(184,134,59,0.45);
+  }
 
-  .rank-table{background:var(--cream); color:var(--ink); border-radius:14px; overflow:hidden;}
-  .rank-row{display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .rank-table{
+    background:var(--cream); color:var(--ink); border-radius:14px; overflow:hidden;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15), 0 14px 32px rgba(0,0,0,0.25);
+    animation:cardIn .35s ease both;
+  }
+  .rank-row{display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s;}
+  .rank-row:active{background:rgba(28,26,20,0.05);}
   .rank-row:last-child{border-bottom:none;}
   .rank-num{font-family:'Fraunces', serif; font-weight:600; font-size:15px; color:var(--text-muted); width:20px; flex-shrink:0;}
   .rank-num.gold{color:var(--brass);}
@@ -475,7 +523,10 @@
 
   /* ---------- player detail ---------- */
   .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;}
-  .stat-box{background:var(--cream); color:var(--ink); border-radius:13px; padding:14px 16px;}
+  .stat-box{
+    background:var(--cream); color:var(--ink); border-radius:13px; padding:14px 16px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.12), 0 8px 18px rgba(0,0,0,0.16);
+  }
   .stat-box .n{font-family:'Fraunces', serif; font-weight:600; font-size:22px;}
   .stat-box .l{font-size:11.5px; color:var(--text-muted); margin-top:2px;}
   .trophy-row{display:flex; gap:18px; margin-bottom:20px;}
@@ -911,7 +962,7 @@ async function syncPollSessions(){
         buyIn: 0,
         createdAt: Date.now(),
         fromInscriptions: true,
-        players: data.present.map(p => ({ name: p.name, position: null, bounty: null, gains: null }))
+        players: data.present.map(p => ({ name: p.name, position: null, bounty: 0, gains: 0 }))
       });
       existingIds.add(dateKey);
     }
@@ -1081,7 +1132,7 @@ async function openCreateSheet(){
     const status = date <= new Date().toISOString().slice(0,10) ? 'ongoing' : 'upcoming';
     await saveSession(id, {
       date, name, status, buyIn, createdAt: Date.now(),
-      players: chosen.map(n => ({ name:n, position:null, bounty:null, gains:null }))
+      players: chosen.map(n => ({ name:n, position:null, bounty:0, gains:0 }))
     });
     backdrop.remove();
     trackerSessions = await listSessions();
@@ -1140,6 +1191,15 @@ async function renderSessionDetail(id){
         <div class="notice" id="quickFillNotice"></div>
       </div>
 
+      <div class="field">
+        <label>Ajouter un joueur</label>
+        <div class="add-player-row">
+          <input type="text" id="addPlayerInput" placeholder="Prénom" list="knownPlayersSession">
+          <button class="btn btn-outline" id="addPlayerBtn">Ajouter</button>
+        </div>
+        <datalist id="knownPlayersSession">${allPlayerNames().map(n=>`<option value="${escapeHtml(n)}">`).join('')}</datalist>
+      </div>
+
       <div class="col-labels" style="grid-template-columns:1fr 50px 60px 70px;"><span>Joueur</span><span>Rang</span><span>Bounty</span><span>Gains</span></div>
       ${players.map((p,i) => `
         <div class="result-row" data-idx="${i}" style="grid-template-columns:1fr 50px 60px 70px;">
@@ -1169,6 +1229,25 @@ async function renderSessionDetail(id){
       openSessionId = id;
       render();
     }, 600);
+  });
+
+  document.getElementById('addPlayerBtn').addEventListener('click', async () => {
+    const input = document.getElementById('addPlayerInput');
+    const name = input.value.trim();
+    if(!name) return;
+    if(players.some(p => p.name.toLowerCase() === name.toLowerCase())){
+      input.style.borderColor = 'var(--red-deep)';
+      setTimeout(() => { input.style.borderColor = ''; }, 1200);
+      return;
+    }
+    const updated = [...players, { name, position: null, bounty: 0, gains: 0 }];
+    await updateSession(id, { players: updated });
+    trackerSessions = await listSessions();
+    openSessionId = id;
+    render();
+  });
+  document.getElementById('addPlayerInput').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addPlayerBtn').click(); }
   });
 
   document.getElementById('quickFillBtn').addEventListener('click', async () => {
