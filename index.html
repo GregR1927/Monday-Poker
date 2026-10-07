@@ -1208,7 +1208,7 @@ async function renderSessionDetail(id){
           <input type="number" min="0" step="1" class="bounty-input" value="${p.bounty ?? ''}" placeholder="–">
           <input type="number" step="1" class="gain-input" value="${p.gains ?? ''}" placeholder="–">
         </div>`).join('')}
-      <small class="hint" style="margin-top:14px;">Bounty = primes de knockout encaissées. Gains = paiement de classement (ITM). Modifier un résultat recalcule tout automatiquement.</small>
+      <small class="hint" style="margin-top:14px;">Bounty = primes de knockout encaissées. Gains = paiement de classement (ITM). Modifier un résultat — même après clôture — recalcule tout automatiquement, en cas d'erreur de saisie à corriger.</small>
       ${buyIn ? `<div style="text-align:right; font-family:'Fraunces',serif; font-weight:600; font-size:16px; margin-bottom:8px;">Net session : ${fmtChf(netTotal)}</div>` : ''}
       <div class="session-actions">
         ${s.status !== 'cancelled' ? `<button class="btn btn-outline" id="cancelBtn" style="flex:1;">Annuler (pas assez de joueurs)</button>` : ''}
