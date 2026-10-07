@@ -1299,25 +1299,28 @@ async function renderSessionDetail(id){
     const posInput = row.querySelector('.pos-input');
     const bountyInput = row.querySelector('.bounty-input');
     const gainInput = row.querySelector('.gain-input');
+    async function doSave(){
+      clearTimeout(saveTimer);
+      const updated = [...players];
+      updated[idx] = {
+        ...updated[idx],
+        position: posInput.value === '' ? null : Number(posInput.value),
+        bounty: bountyInput.value === '' ? null : Number(bountyInput.value),
+        gains: gainInput.value === '' ? null : Number(gainInput.value)
+      };
+      await updateSession(id, { players: updated });
+      trackerSessions = await listSessions();
+      openSessionId = id;
+      render();
+    }
     function scheduleSave(){
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => {
-        const updated = [...players];
-        updated[idx] = {
-          ...updated[idx],
-          position: posInput.value === '' ? null : Number(posInput.value),
-          bounty: bountyInput.value === '' ? null : Number(bountyInput.value),
-          gains: gainInput.value === '' ? null : Number(gainInput.value)
-        };
-        await updateSession(id, { players: updated });
-        trackerSessions = await listSessions();
-        openSessionId = id;
-        render();
-      }, 500);
+      saveTimer = setTimeout(doSave, 500);
     }
-    posInput.addEventListener('input', scheduleSave);
-    bountyInput.addEventListener('input', scheduleSave);
-    gainInput.addEventListener('input', scheduleSave);
+    [posInput, bountyInput, gainInput].forEach(inp => {
+      inp.addEventListener('input', scheduleSave);
+      inp.addEventListener('blur', doSave); // sauvegarde immédiate en quittant le champ
+    });
   });
 
   const cancelBtn = document.getElementById('cancelBtn');
@@ -1518,6 +1521,11 @@ function startListening(){
     liveRef = firebase.database().ref();
     liveRef.on('value', () => {
       if(firstSnapshot){ firstSnapshot = false; return; }
+      // Ne pas reconstruire l'écran pendant qu'une session est ouverte :
+      // ça couperait une saisie en cours (champ en train d'être tapé) avant
+      // que la sauvegarde (500ms) n'ait eu le temps de s'exécuter. La session
+      // se rafraîchit déjà elle-même juste après chaque sauvegarde réussie.
+      if(openSessionId) return;
       render();
     });
   }catch(e){ console.error('Écoute temps réel indisponible :', e); }
