@@ -394,7 +394,7 @@
     color:#3a2a0d;
     box-shadow:0 1px 1px rgba(255,255,255,0.3) inset, 0 4px 10px rgba(184,134,59,0.4);
   }
-  .btn-outline{background:transparent; color:var(--cream); border:1.5px solid rgba(230,220,192,0.3);}
+  .btn-outline{background:transparent; color:var(--ink); border:1.5px solid rgba(28,26,20,0.25);}
   .btn:active{transform:scale(0.97); filter:brightness(0.96);}
   .btn:disabled{opacity:0.35; cursor:default;}
   .fab-row{display:flex; justify-content:flex-end; margin:6px 0 18px;}
@@ -467,6 +467,12 @@
   .result-row{display:grid; grid-template-columns:1fr 64px 84px; gap:8px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line);}
   .result-row:last-child{border-bottom:none;}
   .result-row .pname{font-weight:600; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .pname-input{
+    font-family:inherit; font-weight:600; font-size:14.5px; color:var(--ink);
+    border:1.5px solid transparent; background:transparent; border-radius:8px;
+    padding:4px 6px; min-width:0; width:100%;
+  }
+  .pname-input:focus{border-color:rgba(28,26,20,0.2); background:#fff; outline:none;}
   .result-row input{
     width:100%; border:1.5px solid rgba(28,26,20,0.15); border-radius:8px; padding:7px 6px;
     font-size:14px; font-family:inherit; text-align:center; background:#fff; color:var(--ink);
@@ -584,6 +590,7 @@ let nameSaveTimer = null;
 let currentTab = 'inscriptions';
 let openSessionId = null;
 let openPlayerName = null;
+let lastAddedPlayer = null;
 let resultsSort = 'net';
 let statsYear = 'all';
 let trackerSessions = [];
@@ -934,6 +941,17 @@ async function updateSession(id, patch){
   const ref = firebase.database().ref(`tracker/sessions/${id}`);
   await ref.transaction(current => ({ ...(current || {}), ...patch }));
 }
+// Enregistre puis rafraîchit l'écran de session sans sauter en haut de page —
+// la reconstruction complète de la vue à chaque frappe donnait une sensation
+// désagréable de "saut" ; on restaure la position de défilement juste après.
+async function updateSessionPreservingScroll(sessionId, patch){
+  const scrollY = window.scrollY;
+  await updateSession(sessionId, patch);
+  trackerSessions = await listSessions();
+  openSessionId = sessionId;
+  await render();
+  window.scrollTo(0, scrollY);
+}
 function newSessionId(){ return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 // Transforme automatiquement chaque soirée Monday Poker passée en session
@@ -1203,7 +1221,7 @@ async function renderSessionDetail(id){
       <div class="col-labels" style="grid-template-columns:1fr 50px 60px 70px;"><span>Joueur</span><span>Rang</span><span>Bounty</span><span>Gains</span></div>
       ${players.map((p,i) => `
         <div class="result-row" data-idx="${i}" style="grid-template-columns:1fr 50px 60px 70px;">
-          <div class="pname">${escapeHtml(p.name)}</div>
+          <input type="text" class="pname-input" value="${escapeHtml(p.name)}">
           <input type="number" min="1" step="1" class="pos-input" value="${p.position ?? ''}" placeholder="–">
           <input type="number" min="0" step="1" class="bounty-input" value="${p.bounty ?? ''}" placeholder="–">
           <input type="number" step="1" class="gain-input" value="${p.gains ?? ''}" placeholder="–">
@@ -1224,31 +1242,56 @@ async function renderSessionDetail(id){
     clearTimeout(buyInTimer);
     buyInTimer = setTimeout(async () => {
       const val = e.target.value === '' ? 0 : Number(e.target.value);
-      await updateSession(id, { buyIn: val });
-      trackerSessions = await listSessions();
-      openSessionId = id;
-      render();
+      await updateSessionPreservingScroll(id, { buyIn: val });
     }, 600);
   });
 
-  document.getElementById('addPlayerBtn').addEventListener('click', async () => {
+  const addPlayerBtn = document.getElementById('addPlayerBtn');
+  async function addPlayerToSession(){
     const input = document.getElementById('addPlayerInput');
     const name = input.value.trim();
     if(!name) return;
     if(players.some(p => p.name.toLowerCase() === name.toLowerCase())){
       input.style.borderColor = 'var(--red-deep)';
-      setTimeout(() => { input.style.borderColor = ''; }, 1200);
+      input.placeholder = 'Déjà dans la session';
+      setTimeout(() => { input.style.borderColor = ''; input.placeholder = 'Prénom'; }, 1600);
       return;
     }
-    const updated = [...players, { name, position: null, bounty: 0, gains: 0 }];
-    await updateSession(id, { players: updated });
-    trackerSessions = await listSessions();
-    openSessionId = id;
-    render();
-  });
+    addPlayerBtn.disabled = true;
+    addPlayerBtn.textContent = '…';
+    try{
+      const updated = [...players, { name, position: null, bounty: 0, gains: 0 }];
+      await updateSession(id, { players: updated });
+      trackerSessions = await listSessions();
+      openSessionId = id;
+      lastAddedPlayer = name;
+      render();
+    }catch(e){
+      addPlayerBtn.disabled = false;
+      addPlayerBtn.textContent = 'Ajouter';
+      console.error('Échec de l\'ajout du joueur :', e);
+    }
+  }
+  addPlayerBtn.addEventListener('click', addPlayerToSession);
   document.getElementById('addPlayerInput').addEventListener('keydown', (e) => {
-    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addPlayerBtn').click(); }
+    if(e.key === 'Enter'){ e.preventDefault(); addPlayerToSession(); }
   });
+
+  // Si un joueur vient d'être ajouté, on défile jusqu'à sa ligne pour
+  // confirmer visuellement que l'ajout a bien fonctionné.
+  if(lastAddedPlayer){
+    const addedIdx = players.findIndex(p => p.name === lastAddedPlayer);
+    lastAddedPlayer = null;
+    if(addedIdx !== -1){
+      const row = view.querySelectorAll('.result-row')[addedIdx];
+      if(row){
+        row.scrollIntoView({behavior:'smooth', block:'center'});
+        row.style.transition = 'background .3s';
+        row.style.background = 'rgba(201,152,43,0.25)';
+        setTimeout(() => { row.style.background = ''; }, 1500);
+      }
+    }
+  }
 
   document.getElementById('quickFillBtn').addEventListener('click', async () => {
     const raw = document.getElementById('quickFill').value;
@@ -1296,28 +1339,29 @@ async function renderSessionDetail(id){
   let saveTimer = null;
   view.querySelectorAll('.result-row').forEach(row => {
     const idx = Number(row.dataset.idx);
+    const nameInput = row.querySelector('.pname-input');
     const posInput = row.querySelector('.pos-input');
     const bountyInput = row.querySelector('.bounty-input');
     const gainInput = row.querySelector('.gain-input');
     async function doSave(){
       clearTimeout(saveTimer);
+      const newName = nameInput.value.trim();
+      if(!newName) return; // on ne vide jamais un nom par erreur
       const updated = [...players];
       updated[idx] = {
         ...updated[idx],
+        name: newName,
         position: posInput.value === '' ? null : Number(posInput.value),
         bounty: bountyInput.value === '' ? null : Number(bountyInput.value),
         gains: gainInput.value === '' ? null : Number(gainInput.value)
       };
-      await updateSession(id, { players: updated });
-      trackerSessions = await listSessions();
-      openSessionId = id;
-      render();
+      await updateSessionPreservingScroll(id, { players: updated });
     }
     function scheduleSave(){
       clearTimeout(saveTimer);
       saveTimer = setTimeout(doSave, 500);
     }
-    [posInput, bountyInput, gainInput].forEach(inp => {
+    [nameInput, posInput, bountyInput, gainInput].forEach(inp => {
       inp.addEventListener('input', scheduleSave);
       inp.addEventListener('blur', doSave); // sauvegarde immédiate en quittant le champ
     });
