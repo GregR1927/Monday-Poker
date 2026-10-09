@@ -1000,7 +1000,8 @@ function playerStats(year){
   for(const s of completedSessions(year)){
     const buyIn = Number(s.buyIn) || 0;
     for(const p of (s.players || [])){
-      if(p.position == null || p.gains == null) continue;
+      if(!p.name) continue;
+      const pos = (p.position === null || p.position === '' || p.position === undefined) ? null : Number(p.position);
       if(!stats[p.name]) stats[p.name] = { name:p.name, participations:0, gains:0, bounty:0, buyInPaid:0, net:0, itm:0, wins:0, second:0, third:0, top3:0, best:-Infinity, bestPos:Infinity, history:[] };
       const st = stats[p.name];
       const gains = Number(p.gains) || 0;
@@ -1011,13 +1012,13 @@ function playerStats(year){
       st.buyInPaid += buyIn;
       st.net += gains + bounty - buyIn;
       if(gains > 0) st.itm++;
-      if(p.position === 1) st.wins++;
-      if(p.position === 2) st.second++;
-      if(p.position === 3) st.third++;
-      if(p.position <= 3) st.top3++;
+      if(pos === 1) st.wins++;
+      if(pos === 2) st.second++;
+      if(pos === 3) st.third++;
+      if(pos !== null && pos <= 3) st.top3++;
       if(gains > st.best) st.best = gains;
-      if(p.position < st.bestPos) st.bestPos = p.position;
-      st.history.push({ date:s.date, name:s.name, position:p.position, gains, bounty, buyIn, net: gains+bounty-buyIn });
+      if(pos !== null && pos < st.bestPos) st.bestPos = pos;
+      st.history.push({ date:s.date, name:s.name, position:pos, gains, bounty, buyIn, net: gains+bounty-buyIn });
     }
   }
   Object.values(stats).forEach(st => st.history.sort((a,b) => b.date.localeCompare(a.date)));
@@ -1033,7 +1034,7 @@ function fmtDate(d){
   const [y,m,dd] = d.split('-').map(Number);
   return new Date(y,m-1,dd).toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'});
 }
-function ordinal(n){ return n === 1 ? '1er' : `${n}e`; }
+function ordinal(n){ if(n === null || n === undefined) return "–"; return n === 1 ? '1er' : `${n}e`; }
 
 function renderSessionsList(){
   const view = document.getElementById('view');
@@ -1167,7 +1168,7 @@ async function renderSessionDetail(id){
   if(!s){ openSessionId = null; render(); return; }
 
   const players = s.players || [];
-  const allFilled = players.every(p => p.position !== null && p.position !== '' && p.gains !== null && p.gains !== '');
+  const allFilled = players.every(p => p.position !== null && p.position !== '' && p.position !== undefined);
   const statusLabel = {upcoming:'À venir', ongoing:'En cours', completed:'Terminée', cancelled:'Annulée'}[s.status] || s.status;
 
   let podiumHtml = '';
@@ -1222,10 +1223,11 @@ async function renderSessionDetail(id){
       ${players.map((p,i) => `
         <div class="result-row" data-idx="${i}" style="grid-template-columns:1fr 50px 60px 70px;">
           <input type="text" class="pname-input" value="${escapeHtml(p.name)}">
-          <input type="number" min="1" step="1" class="pos-input" value="${p.position ?? ''}" placeholder="–">
+          <input type="number" min="1" step="1" class="pos-input" value="${p.position ?? ''}" placeholder="–" style="${(p.position==null||p.position==='')?'border-color:#b3261e;':''}">
           <input type="number" min="0" step="1" class="bounty-input" value="${p.bounty ?? ''}" placeholder="–">
           <input type="number" step="1" class="gain-input" value="${p.gains ?? ''}" placeholder="–">
         </div>`).join('')}
+      ${allFilled?'':'<small class="hint" style="margin-top:10px;color:#b3261e;">Rang manquant (en rouge) : le joueur compte en participation, mais pas dans les victoires/podiums.</small>'}
       <small class="hint" style="margin-top:14px;">Bounty = primes de knockout encaissées. Gains = paiement de classement (ITM). Modifier un résultat — même après clôture — recalcule tout automatiquement, en cas d'erreur de saisie à corriger.</small>
       ${buyIn ? `<div style="text-align:right; font-family:'Fraunces',serif; font-weight:600; font-size:16px; margin-bottom:8px;">Net session : ${fmtChf(netTotal)}</div>` : ''}
       <div class="session-actions">
@@ -1498,7 +1500,7 @@ function renderPlayerDetail(name){
         <div class="stat-box"><div class="n">${fmtChf(stats.gains)}</div><div class="l">Gains ITM cumulés</div></div>
         <div class="stat-box"><div class="n">${fmtChf(stats.bounty)}</div><div class="l">Bounty cumulés</div></div>
         <div class="stat-box"><div class="n">${fmtChf(stats.buyInPaid)}</div><div class="l">Buy-in cumulés</div></div>
-        <div class="stat-box"><div class="n">${ordinal(stats.bestPos)}</div><div class="l">Meilleur classement</div></div>
+        <div class="stat-box"><div class="n">${stats.bestPos===Infinity?"–":ordinal(stats.bestPos)}</div><div class="l">Meilleur classement</div></div>
       </div>
       <small class="hint">Historique des sessions</small>
       ${stats.history.map(h => `<div class="history-row"><div class="l">${escapeHtml(h.name || 'Session')}<span class="d">${fmtDate(h.date)}</span></div><div class="r">${ordinal(h.position)} · ${fmtChf(h.net)} net</div></div>`).join('')}
